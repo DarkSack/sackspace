@@ -478,12 +478,26 @@ public class AutoSwitchTests
     [Fact]
     public void Apps_match_by_program_name_whatever_was_typed()
     {
-        Assert.Equal(["steam", "discord"], AutoSwitch.ParseApps(" Steam.exe, discord ; steam\n"));
+        Assert.Equal(["steam", "discord", @"D:\Juegos"], AutoSwitch.ParseApps(" Steam.exe, discord ; steam\nD:\\Juegos\\"));
         Assert.Null(AutoSwitch.ParseApps(" , "));
-        var gaming = new Workspace { Apps = ["steam"] };
-        Assert.Same(gaming, AutoSwitch.ForApp([new Workspace(), gaming], @"C:\Program Files\Steam\STEAM.EXE"));
-        Assert.Null(AutoSwitch.ForApp([gaming], "code"));
-        Assert.Null(AutoSwitch.ForApp([gaming], ""));
+        var gaming = new Workspace { Apps = ["steam", @"D:\SteamLibrary"] };
+        var streaming = new Workspace { Apps = ["discord", "steam"] };
+        Assert.Equal([gaming], AutoSwitch.ForApp([new Workspace(), gaming], @"C:\Program Files\Steam\STEAM.EXE"));
+        Assert.Equal([gaming, streaming], AutoSwitch.ForApp([gaming, streaming], "steam")); // one program, several workspaces
+        Assert.Empty(AutoSwitch.ForApp([gaming], "code"));
+        Assert.Empty(AutoSwitch.ForApp([gaming], ""));
+
+        // A folder rule takes anything running inside it, and only inside it.
+        Assert.Equal([gaming], AutoSwitch.ForApp([gaming], "DMC5", @"d:\steamlibrary\steamapps\common\DMC5\DMC5.exe"));
+        Assert.Empty(AutoSwitch.ForApp([gaming], "x", @"D:\SteamLibraryOld\x.exe"));
+        Assert.Empty(AutoSwitch.ForApp([gaming], "DMC5")); // no path known
+
+        // "!" leaves things out of a broader rule.
+        Assert.Equal(["!wallpaper64", @"!D:\SteamLibrary\steamapps\common\VTube Studio"], AutoSwitch.ParseApps(@"!Wallpaper64.exe, !D:\SteamLibrary\steamapps\common\VTube Studio\"));
+        var picky = new Workspace { Apps = [@"D:\SteamLibrary", "!wallpaper64", @"!D:\SteamLibrary\steamapps\common\VTube Studio"] };
+        Assert.Empty(AutoSwitch.ForApp([picky], "wallpaper64", @"D:\SteamLibrary\steamapps\common\wallpaper_engine\wallpaper64.exe"));
+        Assert.Empty(AutoSwitch.ForApp([picky], "VTube Studio", @"D:\SteamLibrary\steamapps\common\VTube Studio\VTube Studio.exe"));
+        Assert.Equal([picky], AutoSwitch.ForApp([picky], "DMC5", @"D:\SteamLibrary\steamapps\common\DMC5\DMC5.exe"));
     }
 }
 
@@ -538,5 +552,63 @@ public class TimerLogicTests
         Assert.Equal(TimeSpan.FromSeconds(100), TimerLogic.Shown(s, T0.AddHours(1).AddSeconds(10)));
         Assert.Equal("01:40", TimerLogic.Format(TimeSpan.FromSeconds(100)));
         Assert.Equal("1:00:05", TimerLogic.Format(TimeSpan.FromSeconds(3605)));
+    }
+}
+
+public class ShiftScheduleTests
+{
+    private static readonly DateTime Monday = new(2026, 10, 26);
+
+    [Fact]
+    public void Days_parse_as_a_shift_with_its_break_or_as_a_day_off()
+    {
+        var s = ShiftSchedule.Parse("9:00-18:00 comida 14:00 a 15:00");
+        Assert.Equal(TimeSpan.FromHours(9), s!.Start);
+        Assert.Equal(TimeSpan.FromHours(18), s.End);
+        Assert.Equal(TimeSpan.FromHours(14), s.BreakStart);
+        Assert.Equal(TimeSpan.FromHours(15), s.BreakEnd);
+        Assert.Equal(TimeSpan.FromHours(9), s.Length);
+
+        Assert.Null(ShiftSchedule.Parse("Descanso"));
+        Assert.Null(ShiftSchedule.Parse(""));
+        Assert.Null(ShiftSchedule.Parse("10:00-10:00"));
+        Assert.True(ShiftSchedule.Parse("22:00-06:00")!.Overnight);
+        Assert.Equal(TimeSpan.FromHours(8), ShiftSchedule.Parse("22.00 - 6.00")!.Length);
+    }
+
+    [Fact]
+    public void The_status_follows_the_day_through_its_break()
+    {
+        var week = new JsonObject { ["mon"] = "09:00-18:00 comida 14:00-15:00", ["tue"] = "Descanso" };
+        var before = ShiftSchedule.Status(week, Monday.AddHours(7));
+        Assert.Equal(ShiftPhase.Before, before.Phase);
+        Assert.Equal(Monday.AddHours(9), before.Next);
+
+        var working = ShiftSchedule.Status(week, Monday.AddHours(10));
+        Assert.Equal(ShiftPhase.Working, working.Phase);
+        Assert.Equal(Monday.AddHours(14), working.Next); // next stop: the break
+
+        var lunch = ShiftSchedule.Status(week, Monday.AddHours(14.5));
+        Assert.Equal(ShiftPhase.OnBreak, lunch.Phase);
+        Assert.Equal(Monday.AddHours(15), lunch.Next);
+
+        Assert.Equal(Monday.AddHours(18), ShiftSchedule.Status(week, Monday.AddHours(16)).Next);
+        Assert.Equal(ShiftPhase.Done, ShiftSchedule.Status(week, Monday.AddHours(19)).Phase);
+        Assert.Equal(ShiftPhase.Off, ShiftSchedule.Status(week, Monday.AddDays(1).AddHours(10)).Phase);
+    }
+
+    [Fact]
+    public void A_night_shift_still_counts_after_midnight()
+    {
+        var week = new JsonObject { ["sun"] = "22:00-06:00 cena 02:00-02:30" };
+        var sundayNight = Monday.AddDays(6).AddHours(23);
+        Assert.Equal(ShiftPhase.Working, ShiftSchedule.Status(week, sundayNight).Phase);
+
+        var mondayEarly = Monday.AddDays(7).AddHours(2.25); // the next Monday, 02:15
+        var s = ShiftSchedule.Status(week, mondayEarly);
+        Assert.Equal(ShiftPhase.OnBreak, s.Phase);
+        Assert.Equal(Monday.AddDays(7).AddHours(2.5), s.Next);
+        Assert.Equal(ShiftPhase.Off, ShiftSchedule.Status(week, Monday.AddDays(7).AddHours(7)).Phase);
+        Assert.Equal("2 h 15 min", ShiftSchedule.Span(TimeSpan.FromMinutes(134.2)));
     }
 }

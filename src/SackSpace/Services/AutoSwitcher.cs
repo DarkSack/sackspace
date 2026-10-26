@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using SackSpace.Core.Model;
 using SackSpace.Interop;
 
@@ -6,8 +5,9 @@ namespace SackSpace.Services;
 
 /// <summary>
 /// Brings a workspace up by itself: when its hours begin, or when one of its programs
-/// comes to the front. Only on a change (a new slot, an app of another workspace), so
-/// switching by hand afterwards sticks.
+/// comes to the front. Only on a change (a new slot, an app of other workspaces), so
+/// switching by hand afterwards sticks. A program can belong to several workspaces:
+/// if the one shown is among them nothing moves; otherwise the first of them comes up.
 /// </summary>
 public sealed class AutoSwitcher
 {
@@ -37,17 +37,14 @@ public sealed class AutoSwitcher
         if (!Workspaces.Any(w => w.Apps is { Count: > 0 })) return;
         Native.GetWindowThreadProcessId(hwnd, out var pid);
         if (pid == 0 || pid == Environment.ProcessId) return;
-        string program;
-        try
-        {
-            using var p = Process.GetProcessById((int)pid);
-            program = p.ProcessName;
-        }
-        catch (Exception) { return; } // gone already
-        var ws = AutoSwitch.ForApp(Workspaces, program);
-        if (ws?.Id == _lastApp) return;
-        _lastApp = ws?.Id;
-        if (ws is not null) Switch(ws, program);
+        var path = Native.ProcessPath(pid);
+        if (path is null) return; // gone already, or a protected process
+        var matches = AutoSwitch.ForApp(Workspaces, path, path);
+        var key = string.Join(",", matches.Select(w => w.Id));
+        if (key == _lastApp) return;
+        _lastApp = key;
+        if (matches.Count == 0 || matches.Any(w => w.Id == _s.Session.Config.ActiveWorkspace?.Id)) return;
+        Switch(matches[0], System.IO.Path.GetFileName(path));
     }
 
     private void Switch(Workspace ws, string why)

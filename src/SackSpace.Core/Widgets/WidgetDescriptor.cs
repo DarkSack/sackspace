@@ -45,6 +45,7 @@ public static class BuiltInWidgets
     public const string Network = "network";
     public const string Weather = "weather";
     public const string Timer = "timer";
+    public const string Schedule = "schedule";
 
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
@@ -100,6 +101,17 @@ public static class BuiltInWidgets
             new("minutes", "Minutos del temporizador", WidgetSettingKind.Number, "10", Min: 1, Max: 180),
             new("work", "Minutos de trabajo (Pomodoro)", WidgetSettingKind.Number, "25", Min: 5, Max: 90, Step: 5),
             new("break", "Minutos de descanso (Pomodoro)", WidgetSettingKind.Number, "5", Min: 1, Max: 30),
+        ]),
+        new(Schedule, "Horario", "Tu turno de hoy, cuánto falta para entrar, comer o salir, y la semana. Cada día se escribe en sus opciones.", Glyphs.Work, 340, 330, 240, 150,
+        [
+            new("mon", "Lunes (p. ej. 09:00-18:00 comida 14:00-15:00, o Descanso)", WidgetSettingKind.Text, ""),
+            new("tue", "Martes", WidgetSettingKind.Text, ""),
+            new("wed", "Miércoles", WidgetSettingKind.Text, ""),
+            new("thu", "Jueves", WidgetSettingKind.Text, ""),
+            new("fri", "Viernes", WidgetSettingKind.Text, ""),
+            new("sat", "Sábado", WidgetSettingKind.Text, ""),
+            new("sun", "Domingo", WidgetSettingKind.Text, ""),
+            new("week", "Mostrar la semana", WidgetSettingKind.Toggle, "true"),
         ]),
     ];
 

@@ -86,7 +86,8 @@ internal static class InstalledApps
     }
 
     public static bool Exists(string path) =>
-        path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || path.StartsWith("::") || File.Exists(path) || Directory.Exists(path);
+        path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || path.StartsWith("::") || path.Contains("://") // a link (steam://, com.epicgames.launcher://)
+        || File.Exists(path) || Directory.Exists(path);
 
     private static string SafeDirectory(string path)
     {

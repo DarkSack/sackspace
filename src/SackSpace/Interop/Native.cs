@@ -102,6 +102,33 @@ public static partial class Native
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
 
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    [LibraryImport("kernel32.dll")]
+    public static partial IntPtr OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool QueryFullProcessImageName(IntPtr process, uint flags, System.Text.StringBuilder name, ref uint size);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseHandle(IntPtr handle);
+
+    /// <summary>The exe of a process; works for elevated and 32-bit ones too (Process.MainModule does not).</summary>
+    public static string? ProcessPath(uint pid)
+    {
+        var h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (h == IntPtr.Zero) return null;
+        try
+        {
+            var buffer = new System.Text.StringBuilder(1024);
+            var size = (uint)buffer.Capacity;
+            return QueryFullProcessImageName(h, 0, buffer, ref size) ? buffer.ToString() : null;
+        }
+        finally { CloseHandle(h); }
+    }
+
     // ── Window events (another app came to the front, a window was minimized or restored) ──
     public const uint EVENT_SYSTEM_FOREGROUND = 0x3, EVENT_SYSTEM_MINIMIZEEND = 0x17, WINEVENT_OUTOFCONTEXT = 0;
 

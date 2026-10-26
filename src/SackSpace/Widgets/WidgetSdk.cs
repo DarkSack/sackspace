@@ -69,5 +69,6 @@ public static class WidgetRegistry
         Register(new WidgetFactory(D(BuiltInWidgets.Network), c => new NetworkWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Weather), c => new WeatherWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Timer), c => new TimerWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Schedule), c => new ScheduleWidget(c)));
     }
 }

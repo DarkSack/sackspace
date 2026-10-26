@@ -80,7 +80,7 @@ Si la vista se suscribe a servicios (reloj, muestreador, multimedia), implementa
 - **`WeatherService`** (en `WeatherWidget.cs`): Open-Meteo, sin clave. Busca la ciudad y pide el pronóstico; los paneles con la misma ciudad comparten el informe media hora. Lo único de la app que sale a internet.
 - **`MediaService`**: los controles multimedia de Windows (SMTC), por eventos.
 - **`ActivityGovernor`**: pausa todo lo anterior con pantalla completa (`SHQueryUserNotificationState`) o con la sesión bloqueada. También engancha `EVENT_SYSTEM_FOREGROUND` y `EVENT_SYSTEM_MINIMIZEEND` (`SetWinEventHook` fuera de proceso: no inyecta nada) y avisa cada 4 s, para:
-  - **`AutoSwitcher`**: el espacio cuyo horario empieza, o el de la app que pasa delante (`AutoSwitch`, con pruebas). Solo en el cambio, para respetar lo que el usuario cambie a mano.
+  - **`AutoSwitcher`**: el espacio cuyo horario empieza, o el de la app que pasa delante (`AutoSwitch`, con pruebas). La regla es un nombre de programa o una carpeta (se compara con la ruta del exe, `QueryFullProcessImageName`, que sirve también con procesos elevados); `!` excluye. Si el espacio activo ya reclama la app no se mueve; si no, va al primero que la reclame. Solo en el cambio, para respetar lo que el usuario cambie a mano.
   - **`HostManager.UpdateResting`**: una pantalla tapada por una ventana maximizada o del tamaño del área de trabajo (`CoveringWindows`: ni la del escritorio, ni las ocultas en otro escritorio virtual) oculta su vista. Una ventana transparente se redibuja por software en cada cambio aunque nadie la vea; oculta no cuesta nada.
 
 ### Aspecto por panel

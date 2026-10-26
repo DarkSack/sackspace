@@ -571,7 +571,7 @@ public sealed class SettingsWindow : Window
     private FrameworkElement Automatic(Workspace ws)
     {
         var box = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        box.Children.Add(Ui.Text("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Vacío, nunca.", size: 12, wrap: true));
+        box.Children.Add(Ui.Text("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Una carpeta cuenta todo lo que se abra dentro de ella. Un programa puede estar en varios espacios: si ya estás en uno de ellos, no cambia.", size: 12, wrap: true));
 
         var hours = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
         TextBox Time(string? value, string hint) =>
@@ -629,13 +629,18 @@ public sealed class SettingsWindow : Window
         box.Children.Add(hours);
         box.Children.Add(days);
 
-        var apps = new TextBox { Style = Ui.Style("FieldTextBox"), Text = string.Join(", ", ws.Apps ?? []), Width = 320, Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+        var apps = new TextBox
+        {
+            Style = Ui.Style("FieldTextBox"), Text = string.Join(", ", ws.Apps ?? []), Width = 440, MaxHeight = 120,
+            TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left,
+        };
         apps.TextChanged += (_, _) =>
         {
             ws.Apps = AutoSwitch.ParseApps(apps.Text);
             Notify(ChangeKind.WorkspaceList);
         };
-        box.Children.Add(Ui.WithPlaceholder(apps, "Al usar estos programas: steam, discord…"));
+        box.Children.Add(Ui.WithPlaceholder(apps, "Al usar estos programas o carpetas: steam, discord, D:\\Juegos…"));
         return box;
     }
 

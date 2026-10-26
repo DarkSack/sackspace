@@ -21,11 +21,25 @@ public static class AutoSwitch
 
     public static Workspace? Scheduled(IEnumerable<Workspace> list, DateTime now) => list.FirstOrDefault(w => InSchedule(w, now));
 
-    public static Workspace? ForApp(IEnumerable<Workspace> list, string program)
+    /// <summary>
+    /// Every workspace that claims this program, in list order. A rule is a program name
+    /// ("steam") or a folder ("D:\SteamLibrary"): anything running from inside it. A rule
+    /// starting with "!" leaves that program or folder out ("!wallpaper64").
+    /// </summary>
+    public static List<Workspace> ForApp(IEnumerable<Workspace> list, string program, string? fullPath = null)
     {
         var name = Normalize(program);
-        return name.Length == 0 ? null : list.FirstOrDefault(w => w.Apps?.Any(a => Normalize(a) == name) == true);
+        var path = fullPath?.Replace('/', '\\');
+        if (name.Length == 0) return [];
+        bool Hit(string rule) => IsFolder(rule)
+            ? path is not null && path.StartsWith(rule.TrimEnd('\\', '/').Replace('/', '\\') + "\\", StringComparison.OrdinalIgnoreCase)
+            : Normalize(rule) == name;
+        return list.Where(w => w.Apps is { } rules
+            && rules.Any(r => !r.StartsWith('!') && Hit(r))
+            && !rules.Any(r => r.StartsWith('!') && Hit(r[1..]))).ToList();
     }
+
+    public static bool IsFolder(string rule) => rule.Contains('\\') || rule.Contains('/');
 
     /// <summary>"Steam.exe", "C:\x\steam.exe" and " steam " are all "steam".</summary>
     public static string Normalize(string program)
@@ -35,11 +49,14 @@ public static class AutoSwitch
         return name.ToLowerInvariant();
     }
 
-    /// <summary>What the user typed ("steam, discord.exe") as a clean list; null when empty.</summary>
+    /// <summary>What the user typed ("steam, discord.exe, D:\Juegos") as a clean list; null when empty.</summary>
     public static List<string>? ParseApps(string text)
     {
-        var list = text.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(Normalize).Where(n => n.Length > 0).Distinct().ToList();
+        var list = text.Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(r => r.StartsWith('!') ? "!" + Clean(r[1..]) : Clean(r))
+            .Where(n => n.TrimStart('!').Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         return list.Count == 0 ? null : list;
+
+        static string Clean(string r) => IsFolder(r) ? r.Trim().TrimEnd('\\', '/') : Normalize(r);
     }
 }
