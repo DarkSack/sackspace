@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Models, storage, layout and themes: no WPF or Win32, so the tests run anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SackSpace.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SackSpace.Tests" />
+  </ItemGroup>
+</Project>

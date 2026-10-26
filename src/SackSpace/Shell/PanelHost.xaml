@@ -1,0 +1,57 @@
+<UserControl x:Class="SackSpace.Shell.PanelHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid x:Name="Root">
+        <!-- Shadow: an opaque shape under the glass; only its blur shows outside. -->
+        <Border x:Name="Shadow" CornerRadius="{DynamicResource PanelCornerRadius}" Background="Black" Margin="2" IsHitTestVisible="False">
+            <Border.Effect>
+                <DropShadowEffect x:Name="ShadowFx" BlurRadius="24" ShadowDepth="5" Direction="270" Opacity="0.26" RenderingBias="Performance" />
+            </Border.Effect>
+        </Border>
+
+        <!-- Glass: the blurred wallpaper behind this exact spot, then the theme's tint and a top highlight. -->
+        <Border x:Name="Glass" CornerRadius="{DynamicResource PanelCornerRadius}">
+            <Border.Background>
+                <ImageBrush x:Name="GlassBrush" ViewboxUnits="Absolute" Stretch="Fill" />
+            </Border.Background>
+        </Border>
+        <Border CornerRadius="{DynamicResource PanelCornerRadius}" Background="{DynamicResource GlassTintBrush}" />
+        <Border CornerRadius="{DynamicResource PanelCornerRadius}" Background="{DynamicResource GlassHighlightBrush}" IsHitTestVisible="False" />
+
+        <ContentControl x:Name="Body" Margin="18,16" Focusable="False" />
+
+        <Border CornerRadius="{DynamicResource PanelCornerRadius}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1" IsHitTestVisible="False" />
+
+        <!-- Edit mode: drag anywhere to move, the corner to resize, buttons for options, hide and remove. -->
+        <Grid x:Name="EditLayer" Visibility="Collapsed">
+            <Thumb x:Name="MoveThumb" Cursor="SizeAll">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border CornerRadius="{DynamicResource PanelCornerRadius}" Background="#01FFFFFF"
+                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" />
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0">
+                <Button x:Name="SettingsButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"
+                        Content="&#xE713;" ToolTip="Opciones del widget" Margin="0,0,6,0" />
+                <Button x:Name="HideButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"
+                        Content="&#xED1A;" ToolTip="Ocultar" Margin="0,0,6,0" />
+                <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"
+                        Content="&#xE711;" ToolTip="Quitar" />
+            </StackPanel>
+            <Thumb x:Name="ResizeThumb" Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <Ellipse Width="22" Height="22" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,4"
+                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            <TextBlock Text="&#xE740;" FontFamily="{StaticResource IconFont}" FontSize="10" Margin="0,0,10,10"
+                                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Foreground="{DynamicResource AccentForegroundBrush}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+        </Grid>
+    </Grid>
+</UserControl>

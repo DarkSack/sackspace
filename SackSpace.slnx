@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SackSpace/SackSpace.csproj" />
+    <Project Path="src/SackSpace.Core/SackSpace.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SackSpace.Tests/SackSpace.Tests.csproj" />
+  </Folder>
+</Solution>

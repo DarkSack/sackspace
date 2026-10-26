@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 19041 = Windows 10 2004: needed for the media controls (SMTC) of the player widget. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <!-- Only for the tray icon (NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>SackSpace</RootNamespace>
+    <AssemblyName>SackSpace</AssemblyName>
+    <AssemblyTitle>SackSpace</AssemblyTitle>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\sackspace.ico</ApplicationIcon>
+    <!-- LibraryImport generates unsafe marshalling code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- WPF reads DPI awareness from app.manifest; WinForms is only the tray icon. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <!-- WinForms is only here for NotifyIcon: keep its names out of the WPF code. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <!-- One-file build: ./publish.ps1. Self-contained, so the PC needs nothing installed. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\sackspace.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SackSpace.Core\SackSpace.Core.csproj" />
+  </ItemGroup>
+</Project>

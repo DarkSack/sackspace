@@ -1,0 +1,40 @@
+# SackSpace
+
+Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difuminado, bordes redondeados, animaciones suaves, al estilo Android) que viven sobre el fondo de pantalla, con un espacio para cada momento: **Personal, Trabajo, Gaming y Desarrollo**, o los que quieras.
+
+- **Espacios**: cada uno con sus propios paneles, accesos, notas, colores y distribución. Se cambia con las pestañas de arriba, la rueda del ratón sobre ellas, los atajos o el icono de la bandeja.
+- **Widgets**: reloj, calendario, notas, tareas, monitor de CPU y RAM, reproductor (lo que suene en Spotify, el navegador o cualquier app) y grupos de accesos (apps del menú Inicio, archivos y carpetas; se arrastran desde el Explorador).
+- **Diseño libre**: mantén pulsado un panel (o el lápiz de la barra) para moverlo, cambiarle el tamaño, ocultarlo o quitarlo; se alinea solo a los bordes y a una rejilla. «Ordenar» los coloca sin encimarse.
+- **Varios monitores**: cada pantalla tiene sus paneles; un panel se manda a otra pantalla con el clic derecho.
+- **Temas**: cinco incluidos y los tuyos en JSON ([docs/TEMAS.md](docs/TEMAS.md)). Acento por espacio, tomado del fondo de pantalla, del tema o a tu gusto; opacidad, desenfoque y esquinas ajustables.
+- **Se guarda solo**: cada cambio se escribe al momento (con copia del anterior). Exportar e importar una copia desde Ajustes.
+- **Privado**: no usa internet, no tiene cuentas ni estadísticas. Todo queda en `%LOCALAPPDATA%\SackSpace`.
+- **Ligero**: 0 % de CPU en reposo y unos 80 MB de memoria; relojes y medidores se pausan con juegos o vídeos a pantalla completa y con la sesión bloqueada.
+
+## Uso
+
+| Acción | Cómo |
+|---|---|
+| Ver los paneles encima de las ventanas | `Ctrl+Alt+W` o clic en el icono de la bandeja. `Esc` o un clic fuera los baja. |
+| Editar el diseño | Mantén pulsado un panel, el lápiz de la barra o `Ctrl+Alt+Shift+E` |
+| Cambiar de espacio | Pestañas, rueda del ratón sobre ellas, `Ctrl+Alt+←/→` o `Ctrl+Alt+Shift+1…9` |
+| Ajustes | Engranaje de la barra, menú de la bandeja o `Ctrl+Alt+Shift+S` |
+
+Los atajos se cambian en Ajustes › Atajos de teclado. Ninguno usa `Ctrl+Alt` con números, `E` o `Q`: en teclados en español eso es AltGr y robaría la `@`, el `#` o el `€`.
+
+## Compilar
+
+Requiere el SDK de .NET 10 en Windows 10 2004 o posterior.
+
+```powershell
+dotnet test SackSpace.slnx          # 44 pruebas del núcleo
+dotnet run --project src/SackSpace  # arranca la app
+.\publish.ps1                       # dist\SackSpace.exe, un solo archivo autocontenido
+```
+
+Argumentos útiles para probar sin tocar tu configuración:
+
+- `--data <carpeta>`: usa otra carpeta de datos (y otra instancia).
+- `--snapshot <carpeta>`: dibuja cada espacio, el modo edición y la galería en PNG por pantalla, sin mostrar ventanas, y sale.
+
+La arquitectura está en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).

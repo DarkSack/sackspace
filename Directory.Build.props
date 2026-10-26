@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <!-- One version for the exe and its libraries. -->
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Company>Sackito</Company>
+    <Product>SackSpace</Product>
+    <Copyright>© Sackito</Copyright>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+</Project>
