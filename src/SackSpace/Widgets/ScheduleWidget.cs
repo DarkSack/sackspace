@@ -327,11 +327,15 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
     /// <summary>
     /// Drag an activity to another hour or day of this week; it snaps to the quarter hour
     /// and keeps its length. A weekly one moves to the new weekday every week.
+    /// The block jumps from slot to slot rather than following every pixel: each move
+    /// redraws the whole transparent window in software, so it only moves when the slot changes.
     /// </summary>
     private void Draggable(FrameworkElement block, FrameworkElement layer, ScheduleEvent e)
     {
         var start = new Point();
         var moving = false;
+        var (fromDay, fromMinute) = (0, 0);
+        var slot = (Day: 0, Minute: 0);
         var offset = new TranslateTransform();
         block.RenderTransform = offset;
         block.Cursor = Cursors.SizeAll;
@@ -345,20 +349,30 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         {
             if (!block.IsMouseCaptured) return;
             var p = a.GetPosition(_week);
-            if (!moving && (p - start).Length < 4) return;
-            moving = _dragging = true;
-            Panel.SetZIndex(layer, 10);
-            (offset.X, offset.Y) = (p.X - start.X, p.Y - start.Y);
+            if (!moving)
+            {
+                if ((p - start).Length < 4) return;
+                moving = _dragging = true;
+                Panel.SetZIndex(layer, 10);
+                (fromDay, fromMinute) = (Day(start.X), e.Span(EventSpan).From);
+                slot = (fromDay, fromMinute);
+            }
+            var top = RowTop(fromMinute) + p.Y - start.Y;
+            var next = (Day(p.X), Minute(top));
+            if (next == slot) return;
+            slot = next;
+            offset.X = _week.ColumnDefinitions[slot.Day + 1].Offset - _week.ColumnDefinitions[fromDay + 1].Offset;
+            offset.Y = RowTop(slot.Minute) - RowTop(fromMinute);
         };
         block.MouseLeftButtonUp += (_, a) =>
         {
             if (!block.IsMouseCaptured) return;
             a.Handled = true;
-            var dropped = moving;
-            var (day, minute) = (Day(a.GetPosition(_week).X), Minute(block.TranslatePoint(new Point(), _week).Y));
+            var dropped = moving && slot != (fromDay, fromMinute);
             moving = _dragging = false;
             block.ReleaseMouseCapture();
-            if (dropped) Move(e, day, minute);
+            if (dropped) Move(e, slot.Day, slot.Minute);
+            else (offset.X, offset.Y) = (0, 0);
         };
         // Another window taking the mouse: back to where it was.
         block.LostMouseCapture += (_, _) =>
@@ -376,35 +390,42 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
     private void Stretchable(FrameworkElement grip, FrameworkElement block, FrameworkElement layer, ScheduleEvent e)
     {
         var startY = 0.0;
-        var startHeight = 0.0;
         var stretching = false;
+        var (from, end) = e.Span(EventSpan);
         grip.MouseLeftButtonDown += (_, a) =>
         {
             startY = a.GetPosition(_week).Y;
-            startHeight = block.ActualHeight;
             grip.CaptureMouse();
             a.Handled = true; // not a move of the whole block
         };
         grip.MouseMove += (_, a) =>
         {
             if (!grip.IsMouseCaptured) return;
-            stretching = _dragging = true;
-            Panel.SetZIndex(layer, 10);
-            block.VerticalAlignment = VerticalAlignment.Top;
-            block.Height = Math.Max(8, startHeight + a.GetPosition(_week).Y - startY);
+            // Like moving: only redraw when the end crosses a quarter hour.
+            var next = Math.Clamp(Minute(RowTop(e.Span(EventSpan).To) + a.GetPosition(_week).Y - startY), from + 15, 1439);
+            if (next == end && stretching) return;
+            if (!stretching)
+            {
+                stretching = _dragging = true;
+                Panel.SetZIndex(layer, 10);
+                block.VerticalAlignment = VerticalAlignment.Top;
+            }
+            end = next;
+            block.Height = Math.Max(8, RowTop(end) - RowTop(from) - block.Margin.Top - block.Margin.Bottom);
         };
         grip.MouseLeftButtonUp += (_, a) =>
         {
             if (!grip.IsMouseCaptured) return;
             a.Handled = true;
-            var done = stretching;
-            var bottom = block.TranslatePoint(new Point(0, block.Height is > 0 and var h ? h : block.ActualHeight), _week).Y;
+            var done = stretching && end != e.Span(EventSpan).To;
             stretching = _dragging = false;
             grip.ReleaseMouseCapture();
-            if (!done) return;
-            var from = (int)e.Time!.Value.TotalMinutes;
-            var end = Math.Clamp(Minute(bottom), from + 15, 1439);
-            Save(e with { End = TimeSpan.FromMinutes(end) });
+            if (done) Save(e with { End = TimeSpan.FromMinutes(end) });
+            else
+            {
+                block.ClearValue(HeightProperty);
+                block.ClearValue(VerticalAlignmentProperty);
+            }
         };
         grip.LostMouseCapture += (_, _) =>
         {
@@ -428,6 +449,15 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         var col = 1;
         for (var c = 1; c <= 7; c++) if (_week.ColumnDefinitions[c].Offset <= x) col = c;
         return col - 1;
+    }
+
+    /// <summary>Where a minute of the day sits on the grid (its quarter-hour line).</summary>
+    private double RowTop(int minute)
+    {
+        var rows = _week.RowDefinitions;
+        var r = 2 + (minute - _first * 60) / 15;
+        if (r >= rows.Count) return rows[^1].Offset + rows[^1].ActualHeight; // the bottom line
+        return rows[Math.Max(2, r)].Offset;
     }
 
     /// <summary>The minute of the day at y, to the nearest quarter hour.</summary>

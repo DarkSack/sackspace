@@ -170,12 +170,17 @@ public sealed class AppPickerSheet : SheetBase
     private readonly StackPanel _list = new();
     private readonly TextBox _search = new() { Style = Ui.Style("FieldTextBox") };
     private IReadOnlyList<InstalledApp> _apps = [];
+    private readonly System.Windows.Threading.DispatcherTimer _typing = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private int _fill; // the latest list; icons of an older one are dropped
 
     public AppPickerSheet(HostView host, AppServices services, Action<InstalledApp> picked) : base(host, Glyphs.Apps, "Elige una app", 440)
     {
         _picked = picked;
         Height = Math.Min(560, host.AreaSize.Height * 0.8);
-        _search.TextChanged += (_, _) => Fill();
+        // Every redraw of the window is done in software: rebuild the list once typing pauses.
+        _typing.Tick += (_, _) => { _typing.Stop(); Fill(); };
+        _search.TextChanged += (_, _) => { _typing.Stop(); _typing.Start(); };
+        Unloaded += (_, _) => _typing.Stop();
         var search = Ui.WithPlaceholder(_search, "Buscar");
         search.Margin = new Thickness(0, 0, 0, 12);
         Body.Children.Add(search);
@@ -192,16 +197,18 @@ public sealed class AppPickerSheet : SheetBase
         Fill();
     }
 
-    private void Fill()
+    private async void Fill()
     {
+        var fill = ++_fill;
         _list.Children.Clear();
+        var icons = new List<(Image Image, Task<ImageSource?> Icon)>();
         var q = _search.Text.Trim();
         var found = _apps.Where(a => q.Length == 0 || a.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)).Take(60).ToList();
         if (found.Count == 0) _list.Children.Add(Ui.Text(_apps.Count == 0 ? "No se encontraron apps." : "Nada coincide con la búsqueda."));
         foreach (var app in found)
         {
             var image = new Image { Width = 24, Height = 24, Margin = new Thickness(0, 0, 12, 0) };
-            LoadIcon(image, app.ParsingName);
+            icons.Add((image, ShellIcons.GetAsync(app.ParsingName, (int)Math.Round(24 * Host.DpiScale))));
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(image);
             row.Children.Add(new TextBlock { Text = app.Name, FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center });
@@ -212,11 +219,12 @@ public sealed class AppPickerSheet : SheetBase
             button.Click += (_, _) => { Host.CloseSheet(); _picked(app); };
             _list.Children.Add(button);
         }
-    }
 
-    private async void LoadIcon(Image image, string path)
-    {
-        try { image.Source = await ShellIcons.GetAsync(path, (int)Math.Round(24 * Host.DpiScale)); }
-        catch (Exception ex) { Log.Warn($"Sin icono para '{path}'", ex); }
+        // All the icons at once: one redraw instead of one per icon as each arrives.
+        try { await Task.WhenAll(icons.Select(i => i.Icon)); }
+        catch (Exception ex) { Log.Warn("Sin algunos iconos", ex); }
+        if (fill != _fill) return;
+        foreach (var (image, icon) in icons)
+            if (icon.IsCompletedSuccessfully) image.Source = icon.Result;
     }
 }

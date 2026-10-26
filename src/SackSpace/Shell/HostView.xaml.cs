@@ -370,16 +370,21 @@ public partial class HostView : UserControl
     {
         if (!Manager.IsRaised) Manager.SetRaised(true);
         (Window.GetWindow(this) as DesktopHost)?.FocusHost();
-        SheetSlot.Content = sheet;
+        // The sheet's shadow, sized and placed with it.
+        var card = new Grid { HorizontalAlignment = sheet.HorizontalAlignment, VerticalAlignment = sheet.VerticalAlignment };
+        var shadow = new BakedShadow();
+        shadow.SetResourceReference(BakedShadow.RadiusProperty, "PanelCornerRadiusValue"); // the Sheet style's corners
+        card.Children.Add(shadow);
+        card.Children.Add(sheet);
+        SheetSlot.Content = card;
         Overlay.Visibility = Visibility.Visible;
         Anim.Set(OverlayScrim, 1);
-        Anim.SlideIn(sheet, 0, 40);
+        Anim.SlideIn(card, 0, 40);
     }
 
     public void CloseSheet()
     {
         if (!SheetOpen) return;
-        var sheet = SheetSlot.Content as FrameworkElement;
         Anim.Set(OverlayScrim, 0);
         Overlay.Visibility = Visibility.Collapsed;
         SheetSlot.Content = null;

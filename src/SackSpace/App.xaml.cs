@@ -296,7 +296,11 @@ public partial class App : Application
         var t2 = Cpu();
         await Task.Delay(6000);
         var t3 = Cpu();
-        Log.Info($"Banco: cambio de espacio {(t1 - t0).TotalMilliseconds / 12:0} ms de CPU, subir y bajar {(t2 - t1).TotalMilliseconds / 6:0} ms, reposo {(t3 - t2).TotalMilliseconds / 6:0} ms/s");
+        // One tiny change (like hovering a button): what a single redraw of the window costs.
+        var bar = hosts.PrimaryView?.Bar;
+        for (var i = 0; i < 20 && bar is not null; i++) { bar.Opacity = i % 2 == 0 ? 0.99 : 1; await Task.Delay(150); }
+        var t4 = Cpu();
+        Log.Info($"Banco: cambio de espacio {(t1 - t0).TotalMilliseconds / 12:0} ms de CPU, subir y bajar {(t2 - t1).TotalMilliseconds / 6:0} ms, reposo {(t3 - t2).TotalMilliseconds / 6:0} ms/s, un cambio pequeño {((t4 - t3).TotalMilliseconds - 3000 * (t3 - t2).TotalMilliseconds / 6000) / 20:0} ms");
         Quit();
     }
 

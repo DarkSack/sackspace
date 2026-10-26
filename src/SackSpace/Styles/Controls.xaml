@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:shell="clr-namespace:SackSpace.Shell">
 
     <!-- Colours, corners and the app font come from ThemeService (DynamicResource). -->
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
@@ -332,13 +333,14 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
-                            CornerRadius="14" Padding="6" Margin="12" MinWidth="200">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.35" RenderingBias="Performance" />
-                        </Border.Effect>
-                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
-                    </Border>
+                    <!-- Baked shadow: a live one redrew the whole menu in software on every hover. -->
+                    <Grid Margin="12">
+                        <shell:BakedShadow Radius="14" />
+                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
+                                CornerRadius="14" Padding="6" MinWidth="200">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -468,10 +470,6 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource PanelCornerRadius}" />
         <Setter Property="Padding" Value="20" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect BlurRadius="32" ShadowDepth="8" Direction="270" Opacity="0.4" RenderingBias="Performance" />
-            </Setter.Value>
-        </Setter>
+        <!-- No Effect: its shadow is a BakedShadow beside it (HostView), redrawn for free. -->
     </Style>
 </ResourceDictionary>
