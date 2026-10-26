@@ -355,3 +355,73 @@ public class WidgetSettingsTests
             Assert.Equal(d.Settings.Count, d.Settings.Select(s => s.Key).Distinct().Count());
         });
 }
+
+public class LiveWallpaperTests : IDisposable
+{
+    private const string Main = @"\\?\DISPLAY#LEN62A4#7&2beae17&0&UID260#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}";
+    private const string Left = @"\\?\DISPLAY#MTC03D7#7&2beae17&0&UID264#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}";
+    private const string Tablet = @"\\?\DISPLAY#Default_Monitor#1&1efbcd86&1&UID256#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}";
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "sackspace-live-" + Guid.NewGuid().ToString("N"));
+
+    public LiveWallpaperTests() => Directory.CreateDirectory(_dir);
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    private string Write(string relative, string text)
+    {
+        var path = Path.Combine(_dir, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, text);
+        return path;
+    }
+
+    /// <summary>A JSON string literal, quotes and escapes included.</summary>
+    private static string J(string s) => System.Text.Json.JsonSerializer.Serialize(s);
+
+    private static string Forward(string s) => s.Replace('\\', '/');
+
+    [Fact]
+    public void Wallpaper_engine_maps_each_monitor_through_its_monitor_map()
+    {
+        Write(Path.Combine("a", "project.json"), """{ "title": "Goblin", "preview": "preview.gif" }""");
+        Write(Path.Combine("a", "preview.gif"), "x");
+        Write(Path.Combine("b", "project.json"), """{ "title": "Danganronpa", "preview": "preview.jpg" }""");
+        Write(Path.Combine("b", "preview.jpg"), "x");
+        var config = Write("config.json", $$"""
+            { "?installdirectory": "E:/x", "Sack": { "general": {
+              "user": { "monitordetection": "managed", "monitormap": {
+                {{J(Forward(Main))}}: { "location": 0 },
+                {{J(Forward(Left))}}: { "location": 1 },
+                {{J(Forward(Tablet))}}: { "location": 2 } } },
+              "wallpaperconfig": { "layout": 0, "selectedwallpapers": {
+                "Monitor0": { "file": {{J(Forward(Path.Combine(_dir, "a", "scene.pkg")))}} },
+                "Monitor1": { "file": {{J(Forward(Path.Combine(_dir, "b", "scene.pkg")))}} } } } } } }
+            """);
+
+        Assert.Equal("Goblin", LiveWallpapers.WallpaperEngine(config, Main, isPrimary: true)?.Title);
+        Assert.Equal(Forward(Path.Combine(_dir, "b", "preview.jpg")), Forward(LiveWallpapers.WallpaperEngine(config, Left, isPrimary: false)!.Picture));
+        Assert.Null(LiveWallpapers.WallpaperEngine(config, Tablet, isPrimary: false)); // no wallpaper there
+        Assert.Equal("Goblin", LiveWallpapers.WallpaperEngine(config, "DISPLAY#NEW", isPrimary: true)?.Title); // unknown primary → Monitor0
+        Assert.Null(LiveWallpapers.WallpaperEngine(Path.Combine(_dir, "missing.json"), Main, true));
+    }
+
+    [Fact]
+    public void Lively_prefers_a_picture_wallpaper_then_its_thumbnail()
+    {
+        Write(Path.Combine("pic", "LivelyInfo.json"), """{ "Title": "Playa", "FileName": "beach.png", "Thumbnail": "t.jpg", "Type": 7 }""");
+        Write(Path.Combine("pic", "beach.png"), "x");
+        Write(Path.Combine("web", "LivelyInfo.json"), """{ "Title": "Lluvia", "FileName": "index.html", "Thumbnail": "lively_t.jpg" }""");
+        Write(Path.Combine("web", "lively_t.jpg"), "x");
+        Write("WallpaperLayout.json", $$"""
+            [ { "LivelyScreen": { "DeviceId": {{J(Main)}} }, "LivelyInfoPath": {{J(Path.Combine(_dir, "pic"))}} },
+              { "LivelyScreen": { "DeviceId": {{J(Left)}} }, "LivelyInfoPath": {{J(Path.Combine(_dir, "web"))}} } ]
+            """);
+
+        Assert.Equal(Path.Combine(_dir, "pic", "beach.png"), LiveWallpapers.Lively(_dir, Main)?.Picture);
+        Assert.Equal("Lluvia", LiveWallpapers.Lively(_dir, Left)?.Title);
+        Assert.Null(LiveWallpapers.Lively(_dir, Tablet));
+
+        Write("Settings.json", """{ "WallpaperArrangement": 2 }"""); // duplicate: the first entry everywhere
+        Assert.Equal("Playa", LiveWallpapers.Lively(_dir, Tablet)?.Title);
+    }
+}

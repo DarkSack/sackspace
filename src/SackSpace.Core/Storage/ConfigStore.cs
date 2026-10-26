@@ -105,6 +105,7 @@ public sealed class ConfigStore(string folder)
     {
         c.General ??= new GeneralSettings();
         c.Appearance ??= new AppearanceSettings();
+        if (string.IsNullOrWhiteSpace(c.Appearance.CustomWallpaper)) c.Appearance.CustomWallpaper = null;
         c.Workspaces ??= [];
         c.Hotkeys ??= [];
         c.Workspaces.RemoveAll(w => w is null);

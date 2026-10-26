@@ -34,6 +34,7 @@ public sealed class AppServices
     /// <summary>Recomputes colours (accent from the workspace or the wallpaper) and the glass blur.</summary>
     public void ApplyTheme(bool animate)
     {
+        Wallpaper.CustomImage = Session.Config.Appearance.CustomWallpaper;
         var primary = Hosts?.Monitors.FirstOrDefault(m => m.IsPrimary);
         var dominant = primary is null ? null : Wallpaper.Get(primary).Dominant;
         Theme.Apply(Session.Config, dominant, animate);

@@ -97,7 +97,10 @@ public partial class PanelHost : UserControl
 
     public void UpdateGlass()
     {
-        GlassBrush.ImageSource = _host.WallpaperImage;
+        var clear = _host.ClearGlass;
+        // The shadow is an opaque shape; clear glass would show it.
+        Shadow.Visibility = clear ? Visibility.Collapsed : Visibility.Visible;
+        GlassBrush.ImageSource = clear ? null : _host.WallpaperImage;
         var vb = _host.GlassViewbox(Bounds);
         if (!vb.IsEmpty) GlassBrush.Viewbox = vb;
     }

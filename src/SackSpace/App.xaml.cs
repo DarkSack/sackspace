@@ -178,6 +178,7 @@ public partial class App : Application
             return;
         }
         if (kind.HasFlag(ChangeKind.Appearance) || kind.HasFlag(ChangeKind.Workspace)) s.ApplyTheme(animate: true);
+        if (kind.HasFlag(ChangeKind.Appearance)) s.Hosts.OnWallpaperChanged(); // clear or frosted glass
         if (kind.HasFlag(ChangeKind.General))
         {
             var g = config.General;

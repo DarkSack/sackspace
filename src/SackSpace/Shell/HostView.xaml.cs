@@ -39,6 +39,8 @@ public partial class HostView : UserControl
 
     public double DpiScale => VisualTreeHelper.GetDpi(this).DpiScaleX;
     public ImageSource? WallpaperImage => _wallpaper?.Blurred;
+    /// <summary>Panels show the live desktop through a tint instead of the blurred copy.</summary>
+    public bool ClearGlass => Services.Session.Config.Appearance.ClearGlass;
     public IEnumerable<PanelHost> Panels => _layer?.Children.OfType<PanelHost>() ?? [];
     public Workspace? CurrentWorkspace => Services.Session.Config.Workspaces.FirstOrDefault(w => w.Id == _workspaceId);
     public bool SheetOpen => Overlay.Visibility == Visibility.Visible;

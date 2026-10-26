@@ -57,6 +57,10 @@ public sealed class AppearanceSettings
     public double? GlassOpacity { get; set; }
     public double? BlurRadius { get; set; }
     public double? CornerRadius { get; set; }
+    /// <summary>Picture blurred behind the glass instead of each screen's wallpaper; null = automatic.</summary>
+    public string? CustomWallpaper { get; set; }
+    /// <summary>The panels let the live desktop show through, unblurred, instead of a blurred copy.</summary>
+    public bool ClearGlass { get; set; }
 }
 
 public sealed class Workspace

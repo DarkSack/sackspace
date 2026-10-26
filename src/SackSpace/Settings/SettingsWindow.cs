@@ -342,6 +342,8 @@ public sealed class SettingsWindow : Window
         }
 
         Group("Cristal");
+        Card("Cristal transparente", "Deja ver el escritorio en vivo, sin difuminar, también los fondos animados de Wallpaper Engine o Lively. Si cuesta leer, sube la opacidad.",
+            Toggle(a.ClearGlass, v => { a.ClearGlass = v; Notify(ChangeKind.Appearance); }));
         Slide("Opacidad del cristal", "Más alto, más fácil de leer sobre fondos con mucho detalle.", 0.1, 0.95, 0.05, t.GlassOpacity,
             v => $"{v * 100:0} %", v => a.GlassOpacity = v);
         Slide("Desenfoque", "Cuánto se difumina el fondo de pantalla detrás de los paneles.", 0, 80, 2, t.BlurRadius,
@@ -357,6 +359,30 @@ public sealed class SettingsWindow : Window
         reset.HorizontalAlignment = HorizontalAlignment.Left;
         reset.Margin = new Thickness(0, 6, 0, 0);
         _page.Children.Add(reset);
+
+        Group("Fondo detrás del cristal");
+        var custom = a.CustomWallpaper;
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+        buttons.Children.Add(Ui.Pill(custom is null ? "Usar una imagen…" : "Cambiar…", () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Imagen para el cristal", Filter = "Imágenes|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.tif;*.tiff" };
+            if (dialog.ShowDialog(this) != true) return;
+            a.CustomWallpaper = dialog.FileName;
+            Notify(ChangeKind.Appearance);
+            Refresh();
+        }, glyph: Glyphs.Folder));
+        if (custom is not null)
+        {
+            var auto = Ui.Pill("Automático", () => { a.CustomWallpaper = null; Notify(ChangeKind.Appearance); Refresh(); }, glyph: Glyphs.Undo);
+            auto.Margin = new Thickness(8, 0, 0, 0);
+            buttons.Children.Add(auto);
+        }
+        var screens = _s.Hosts.Views.Select((v, i) => $"{(v.Monitor.IsPrimary ? "Pantalla principal" : $"Pantalla {i + 1}")}: {_s.Wallpaper.Get(v.Monitor).Source}");
+        Card(custom is null ? "Automático" : "Imagen propia",
+            custom is null
+                ? "Se difumina lo que muestra cada pantalla. Con Wallpaper Engine o Lively se usa la vista previa de su fondo.\n" + string.Join("\n", screens)
+                : Path.GetFileName(custom) + " en todas las pantallas.",
+            buttons);
     }
 
     private void Slide(string title, string description, double min, double max, double step, double value, Func<double, string> format, Action<double> set)

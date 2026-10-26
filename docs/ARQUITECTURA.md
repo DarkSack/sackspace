@@ -28,6 +28,17 @@ Los paneles están sobre el fondo de pantalla, así que lo que hay detrás es el
 
 Cuesta un bitmap pequeño por monitor, y se vuelve a calcular cuando cambia el fondo o el desenfoque.
 
+**De dónde sale el fondo**, por pantalla y en este orden (`WallpaperService.Pick`):
+
+1. La imagen propia de Ajustes › Apariencia, si hay.
+2. **Wallpaper Engine** (si corre `wallpaper64`/`wallpaper32`): su `config.json` está junto al exe que guarda el registro (`HKCU\Software\WallpaperEngine\installPath`). En `general.wallpaperconfig.selectedwallpapers` cada pantalla es `MonitorN`, y `general.user.monitormap` dice qué N le toca a cada ruta de dispositivo (la misma clave que usa SackSpace, con `/`). La imagen es el `preview` del `project.json` de ese fondo.
+3. **Lively** (si corre `Lively`): `WallpaperLayout.json` en `%LOCALAPPDATA%\Lively Wallpaper` (o en el `LocalCache` del paquete de la Store) liga cada `DeviceId` con una carpeta; de su `LivelyInfo.json` se usa el propio archivo si es una imagen y, si no, la miniatura.
+4. El fondo de Windows.
+
+Ninguna de las dos apps avisa a Windows cuando cambia su fondo, así que cada 8 s se mira si corren y la fecha de sus archivos. La lectura está en `SackSpace.Core/Themes/LiveWallpapers.cs`, con pruebas.
+
+**Cristal transparente**: los paneles y la barra no pintan el bitmap ni la sombra (que es una forma opaca), solo el tinte. Como la ventana es transparente por píxel, se ve el escritorio en vivo, también un fondo animado.
+
 ## Configuración
 
 - **Archivo**: `AppConfig` → `%LOCALAPPDATA%\SackSpace\config.json`.

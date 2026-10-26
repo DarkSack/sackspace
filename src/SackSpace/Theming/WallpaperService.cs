@@ -1,29 +1,35 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using SackSpace.Core.Themes;
 using SackSpace.Interop;
 
 namespace SackSpace.Theming;
 
-/// <summary>A monitor's wallpaper, small and blurred: what the glass panels show through.</summary>
-public sealed record WallpaperImage(BitmapSource Blurred, Native.RECT Bounds, Argb? Dominant);
+/// <summary>A monitor's wallpaper, small and blurred: what the glass panels show through. Source says where it came from.</summary>
+public sealed record WallpaperImage(BitmapSource Blurred, Native.RECT Bounds, Argb? Dominant, string Source);
 
 /// <summary>
 /// Glass without a live backdrop blur: the panels sit on the desktop, so what is behind
 /// them is the wallpaper. Each monitor's wallpaper is drawn once at 480 px wide, blurred,
-/// and every panel paints its own slice of it. Cheap (one small bitmap per monitor),
-/// and exact, because it is the same picture Windows draws.
+/// and every panel paints its own slice of it. Cheap (one small bitmap per monitor).
+/// With Wallpaper Engine or Lively the picture is that wallpaper's still preview: close in
+/// colour, not frame-exact (clear glass shows the moving one).
 /// </summary>
 public sealed class WallpaperService
 {
     private const int TargetWidth = 480;
     private readonly Dictionary<string, WallpaperImage> _cache = new();
     private double _blurRadius = 40;
+    private string? _customImage;
+    // Wallpaper Engine's config.json and Lively's data folder, when those apps run; and a fingerprint of both.
+    private (string? Engine, string? Lively, string Stamp) _live = (null, null, "");
 
     /// <summary>The wallpaper or the blur changed: panels must repaint their glass.</summary>
     public event Action? Changed;
@@ -36,6 +42,29 @@ public sealed class WallpaperService
             if (e.Category == UserPreferenceCategory.Desktop)
                 Application.Current?.Dispatcher.BeginInvoke(async () => { await Task.Delay(400); Invalidate(); });
         };
+        // Neither app tells Windows when its wallpaper changes, so look every few seconds (a few file stamps).
+        _live = FindLive();
+        var poll = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        poll.Tick += (_, _) =>
+        {
+            var now = FindLive();
+            if (now.Stamp == _live.Stamp) return;
+            _live = now;
+            Invalidate();
+        };
+        poll.Start();
+    }
+
+    /// <summary>A picture to use behind the glass on every screen, or null for each screen's own wallpaper.</summary>
+    public string? CustomImage
+    {
+        get => _customImage;
+        set
+        {
+            if (value == _customImage) return;
+            _customImage = value;
+            Invalidate();
+        }
     }
 
     public double BlurRadius
@@ -61,18 +90,61 @@ public sealed class WallpaperService
         WallpaperImage image;
         try
         {
-            image = Render(DesktopWallpaper.For(monitor.Bounds), monitor.Bounds, _blurRadius, monitor.Scale);
+            var (source, label) = Pick(monitor);
+            image = Render(source, label, monitor.Bounds, _blurRadius, monitor.Scale);
+            Log.Info($"Cristal de {monitor.DeviceName}: {label}");
         }
         catch (Exception ex)
         {
             Log.Warn("No se pudo dibujar el fondo de pantalla", ex);
-            image = Render(new WallpaperSource(null, WallpaperPosition.Fill, 0x1E1A16), monitor.Bounds, 0, monitor.Scale);
+            image = Render(new WallpaperSource(null, WallpaperPosition.Fill, 0x1E1A16), "Color liso", monitor.Bounds, 0, monitor.Scale);
         }
         _cache[monitor.Key] = image;
         return image;
     }
 
-    private static WallpaperImage Render(WallpaperSource source, Native.RECT bounds, double blurDip, double scale)
+    /// <summary>What this screen shows: the user's picture, else Wallpaper Engine's or Lively's, else Windows'.</summary>
+    private (WallpaperSource Source, string Label) Pick(MonitorInfo monitor)
+    {
+        static WallpaperSource Still(string path) => new(path, WallpaperPosition.Fill, 0);
+        if (_customImage is not null && File.Exists(_customImage)) return (Still(_customImage), "Imagen propia");
+        if (_live.Engine is { } config && LiveWallpapers.WallpaperEngine(config, monitor.Key, monitor.IsPrimary) is { } engine)
+            return (Still(engine.Picture), "Wallpaper Engine · " + engine.Title);
+        if (_live.Lively is { } folder && LiveWallpapers.Lively(folder, monitor.Key) is { } lively)
+            return (Still(lively.Picture), "Lively · " + lively.Title);
+        return (DesktopWallpaper.For(monitor.Bounds), "Fondo de Windows");
+    }
+
+    private static (string? Engine, string? Lively, string Stamp) FindLive()
+    {
+        string? engine = null, lively = null;
+        // One pass over the process list (GetProcessesByName walks all of it on every call).
+        var running = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in Process.GetProcesses()) { running.Add(p.ProcessName); p.Dispose(); }
+        if (running.Contains("wallpaper64") || running.Contains("wallpaper32"))
+        {
+            var exe = Registry.GetValue(@"HKEY_CURRENT_USER\Software\WallpaperEngine", "installPath", null) as string;
+            var config = exe is null ? null : Path.Combine(Path.GetDirectoryName(exe) ?? "", "config.json");
+            if (File.Exists(config)) engine = config;
+        }
+        if (running.Contains("Lively"))
+        {
+            // The Store build keeps its data in the package's redirected AppData.
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var packages = Path.Combine(local, "Packages");
+            lively = new[] { Path.Combine(local, "Lively Wallpaper") }
+                .Concat(Directory.Exists(packages)
+                    ? Directory.EnumerateDirectories(packages, "*LivelyWallpaper*").Select(p => Path.Combine(p, "LocalCache", "Local", "Lively Wallpaper"))
+                    : [])
+                .FirstOrDefault(d => File.Exists(Path.Combine(d, "WallpaperLayout.json")));
+        }
+        var stamp = $"{engine}|{Stamp(engine)}|{lively}|{Stamp(lively is null ? null : Path.Combine(lively, "WallpaperLayout.json"))}";
+        return (engine, lively, stamp);
+
+        static long Stamp(string? path) => path is not null && File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0;
+    }
+
+    private static WallpaperImage Render(WallpaperSource source, string label, Native.RECT bounds, double blurDip, double scale)
     {
         int mw = Math.Max(1, bounds.Width), mh = Math.Max(1, bounds.Height);
         var k = TargetWidth / (double)mw;
@@ -88,7 +160,7 @@ public sealed class WallpaperService
 
         var radius = Math.Clamp(blurDip * scale * k, 0, 60);
         var blurred = radius < 0.5 ? sharp : Blur(sharp, radius);
-        return new WallpaperImage(blurred, bounds, dominant);
+        return new WallpaperImage(blurred, bounds, dominant, label);
     }
 
     private static (BitmapSource? Image, int NaturalWidth, int NaturalHeight) Load(string? path)
