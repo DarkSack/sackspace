@@ -574,25 +574,26 @@ public sealed class SettingsWindow : Window
         box.Children.Add(Ui.Text("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Una carpeta cuenta todo lo que se abra dentro de ella. Un programa puede estar en varios espacios: si ya estás en uno de ellos, no cambia.", size: 12, wrap: true));
 
         var hours = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-        TextBox Time(string? value, string hint) =>
-            new() { Style = Ui.Style("FieldTextBox"), Text = value ?? "", Width = 70, MaxLength = 5, ToolTip = hint, VerticalAlignment = VerticalAlignment.Center };
-        var from = Time(ws.ScheduleFrom, "Desde, p. ej. 09:00");
-        var to = Time(ws.ScheduleTo, "Hasta, p. ej. 18:00");
+        var from = Ui.TimeBox(ws.ScheduleFrom);
+        var to = Ui.TimeBox(ws.ScheduleTo);
+        from.ToolTip = to.ToolTip = "La misma hora en los dos = sin horario";
         var status = Ui.Text("", size: 12);
         status.VerticalAlignment = VerticalAlignment.Center;
         status.Margin = new Thickness(10, 0, 0, 0);
         void SaveHours()
         {
-            var a = from.Text.Trim();
-            var b = to.Text.Trim();
-            if (a.Length == 0 && b.Length == 0) { ws.ScheduleFrom = ws.ScheduleTo = null; status.Text = "sin horario"; }
-            else if (AutoSwitch.TryParseTime(a, out var ta) && AutoSwitch.TryParseTime(b, out var tb) && ta != tb)
+            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(from.Text), out var ta) || !AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(to.Text), out var tb))
+            {
+                status.Text = "esa hora no existe"; // half typed: keep the last good hours
+                return;
+            }
+            if (ta == tb) { ws.ScheduleFrom = ws.ScheduleTo = null; status.Text = "sin horario"; }
+            else
             {
                 ws.ScheduleFrom = ta.ToString(@"hh\:mm");
                 ws.ScheduleTo = tb.ToString(@"hh\:mm");
                 status.Text = ta > tb ? "pasa la medianoche" : "";
             }
-            else { status.Text = "formato 09:00"; return; } // half typed: keep the last good hours
             Notify(ChangeKind.WorkspaceList);
         }
         from.TextChanged += (_, _) => SaveHours();

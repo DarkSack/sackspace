@@ -8,6 +8,19 @@ public static class AutoSwitch
     public static bool TryParseTime(string? text, out TimeSpan time) =>
         TimeSpan.TryParseExact(text?.Trim(), [@"h\:mm", @"hh\:mm"], CultureInfo.InvariantCulture, out time) && time < TimeSpan.FromDays(1);
 
+    /// <summary>
+    /// What the user typed in a time field, as "HH:mm": "1100" → "11:00", "930" → "09:30",
+    /// "9" → "09:00", "9:5" stays invalid. null if it is not a time of day.
+    /// </summary>
+    public static string? NormalizeTime(string? text)
+    {
+        var t = text?.Trim() ?? "";
+        if (TryParseTime(t, out var parsed)) return parsed.ToString(@"hh\:mm");
+        if (t.Length is 0 or > 4 || !t.All(char.IsAsciiDigit)) return null;
+        var (h, m) = t.Length <= 2 ? (int.Parse(t), 0) : (int.Parse(t[..^2]), int.Parse(t[^2..]));
+        return h < 24 && m < 60 ? $"{h:00}:{m:00}" : null;
+    }
+
     public static bool InSchedule(Workspace ws, DateTime now)
     {
         if (!TryParseTime(ws.ScheduleFrom, out var from) || !TryParseTime(ws.ScheduleTo, out var to) || from == to) return false;

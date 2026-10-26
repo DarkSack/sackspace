@@ -91,6 +91,64 @@ public static class Ui
         return dock;
     }
 
+    /// <summary>
+    /// A time field that always reads "HH:mm" (00:00 to start with): digits overwrite in
+    /// place and skip the colon, Backspace sets a digit back to 0, and on leaving it what
+    /// was typed or pasted is tidied ("1100" → "11:00"). Text stays a plain string.
+    /// </summary>
+    public static TextBox TimeBox(string? value, double width = 80)
+    {
+        var box = new TextBox
+        {
+            Style = Style("FieldTextBox"), Text = Core.Model.AutoSwitch.NormalizeTime(value) ?? "00:00", MaxLength = 5, Width = width,
+            VerticalAlignment = VerticalAlignment.Center, HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        void Put(int at, char digit, int caret)
+        {
+            var chars = box.Text.PadRight(5, '0').ToCharArray();
+            chars[2] = ':';
+            chars[at] = digit;
+            box.Text = new string(chars);
+            box.CaretIndex = caret;
+        }
+        box.GotKeyboardFocus += (_, _) => box.Dispatcher.BeginInvoke(() => { box.SelectionLength = 0; box.CaretIndex = 0; });
+        box.PreviewTextInput += (_, e) =>
+        {
+            e.Handled = true;
+            foreach (var c in e.Text.Where(char.IsAsciiDigit))
+            {
+                var at = box.CaretIndex == 2 ? 3 : box.CaretIndex;
+                if (at >= 5) return;
+                Put(at, c, at == 1 ? 3 : at + 1);
+            }
+        };
+        box.PreviewKeyDown += (_, e) =>
+        {
+            var at = box.CaretIndex;
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.Space:
+                    e.Handled = true;
+                    break;
+                case System.Windows.Input.Key.Back:
+                    e.Handled = true;
+                    if (at == 3) at = 2;
+                    if (at > 0) Put(at - 1, '0', at - 1);
+                    break;
+                case System.Windows.Input.Key.Delete:
+                    e.Handled = true;
+                    if (at == 2) at = 3;
+                    if (at < 5) Put(at, '0', at);
+                    break;
+            }
+        };
+        box.LostKeyboardFocus += (_, _) =>
+        {
+            if (Core.Model.AutoSwitch.NormalizeTime(box.Text) is { } tidy && tidy != box.Text) box.Text = tidy;
+        };
+        return box;
+    }
+
     /// <summary>Grey hint text shown over an empty TextBox.</summary>
     public static Grid WithPlaceholder(TextBox box, string hint)
     {

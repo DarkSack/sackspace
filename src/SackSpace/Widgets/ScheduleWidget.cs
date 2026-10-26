@@ -264,7 +264,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
                 {
                     Background = Frozen(color), BorderBrush = Ink, BorderThickness = new Thickness(0.5), CornerRadius = new CornerRadius(4),
                     Margin = new Thickness(1), Padding = new Thickness(3, 0, 3, 0),
-                    ToolTip = e.Label + (e.Weekly is not null ? " · cada semana" : "") + "\nArrástrala para moverla; clic derecho para quitarla.",
+                    ToolTip = e.Label + (e.Weekly is not null ? " · cada semana" : "") + "\nArrástrala para moverla; estira su borde de abajo para cambiar cuánto dura; clic derecho para quitarla.",
                     ContextMenu = RemoveMenu(e),
                 };
                 // What first, then when: in a narrow lane the name is what you need to read.
@@ -272,13 +272,19 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
                 label.Inlines.Add(new System.Windows.Documents.Run(e.Text) { FontWeight = FontWeights.SemiBold });
                 label.Inlines.Add(new System.Windows.Documents.LineBreak());
                 label.Inlines.Add(new System.Windows.Documents.Run(e.End is { } end ? $"{e.Time:hh\\:mm}–{end:hh\\:mm}" : $"{e.Time:hh\\:mm}") { FontSize = 9.5 });
-                block.Child = label;
+                // A grip along the bottom edge stretches or shrinks it.
+                var grip = new Border { Height = 6, VerticalAlignment = VerticalAlignment.Bottom, Background = Brushes.Transparent, Cursor = Cursors.SizeNS, Margin = new Thickness(-3, 0, -3, 0) };
+                var body = new Grid();
+                body.Children.Add(label);
+                body.Children.Add(grip);
+                block.Child = body;
                 block.ClipToBounds = true;
                 var lane = new Grid { Margin = new Thickness(4, 0, 2, 0) };
                 for (var l = 0; l < lanes[k].Lanes; l++) lane.ColumnDefinitions.Add(new ColumnDefinition());
                 Grid.SetColumn(block, lanes[k].Lane);
                 lane.Children.Add(block);
                 Draggable(block, lane, e);
+                Stretchable(grip, block, lane, e);
                 Put(lane, Row(from), i + 1, Row(to) - Row(from), z: 2);
             }
         }
@@ -363,6 +369,59 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         };
     }
 
+    /// <summary>
+    /// Drag the bottom edge to change when the activity ends: to the quarter hour, at least
+    /// 15 minutes long, the same day. One without an end gets one.
+    /// </summary>
+    private void Stretchable(FrameworkElement grip, FrameworkElement block, FrameworkElement layer, ScheduleEvent e)
+    {
+        var startY = 0.0;
+        var startHeight = 0.0;
+        var stretching = false;
+        grip.MouseLeftButtonDown += (_, a) =>
+        {
+            startY = a.GetPosition(_week).Y;
+            startHeight = block.ActualHeight;
+            grip.CaptureMouse();
+            a.Handled = true; // not a move of the whole block
+        };
+        grip.MouseMove += (_, a) =>
+        {
+            if (!grip.IsMouseCaptured) return;
+            stretching = _dragging = true;
+            Panel.SetZIndex(layer, 10);
+            block.VerticalAlignment = VerticalAlignment.Top;
+            block.Height = Math.Max(8, startHeight + a.GetPosition(_week).Y - startY);
+        };
+        grip.MouseLeftButtonUp += (_, a) =>
+        {
+            if (!grip.IsMouseCaptured) return;
+            a.Handled = true;
+            var done = stretching;
+            var bottom = block.TranslatePoint(new Point(0, block.Height is > 0 and var h ? h : block.ActualHeight), _week).Y;
+            stretching = _dragging = false;
+            grip.ReleaseMouseCapture();
+            if (!done) return;
+            var from = (int)e.Time!.Value.TotalMinutes;
+            var end = Math.Clamp(Minute(bottom), from + 15, 1439);
+            Save(e with { End = TimeSpan.FromMinutes(end) });
+        };
+        grip.LostMouseCapture += (_, _) =>
+        {
+            if (!stretching) return;
+            stretching = _dragging = false;
+            block.ClearValue(HeightProperty);
+            block.ClearValue(VerticalAlignmentProperty);
+        };
+    }
+
+    private void Save(ScheduleEvent changed)
+    {
+        ScheduleEvent.WriteAll(_c.Settings, ScheduleEvent.ReadAll(_c.Settings).Select(x => x.Id == changed.Id ? changed : x));
+        _c.Save();
+        Refresh();
+    }
+
     /// <summary>The weekday column (0 = Monday) under x.</summary>
     private int Day(double x)
     {
@@ -378,6 +437,8 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         var quarter = 0;
         for (var r = 2; r < rows.Count; r++)
             if (rows[r].Offset - rows[r].ActualHeight / 2 <= y) quarter = r - 2;
+        var lastRow = rows[^1];
+        if (y >= lastRow.Offset + lastRow.ActualHeight / 2) quarter = rows.Count - 2; // the bottom line itself
         return _first * 60 + quarter * 15;
     }
 
@@ -400,9 +461,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
             Date = e.Date is null ? null : date,
             Weekly = e.Weekly is null ? null : ShiftSchedule.Key(date.DayOfWeek),
         };
-        ScheduleEvent.WriteAll(_c.Settings, ScheduleEvent.ReadAll(_c.Settings).Select(x => x.Id == e.Id ? moved : x));
-        _c.Save();
-        Refresh();
+        Save(moved);
     }
 
     private static Brush Frozen(Color c)
@@ -448,15 +507,15 @@ public sealed class AddActivitySheet : SheetBase
     public AddActivitySheet(WidgetContext c, Action added) : base(c.Host, Glyphs.Add, "Nueva actividad", 420)
     {
         var text = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 60, Margin = new Thickness(0, 0, 0, 12) };
-        var time = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 5, Width = 90 };
-        var end = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 5, Width = 90 };
+        var time = Ui.TimeBox(null, 90);
+        var end = Ui.TimeBox(null, 90);
         Body.Children.Add(Label("Qué"));
         Body.Children.Add(Ui.WithPlaceholder(text, "Junta, coaching, entregar reporte…"));
-        Body.Children.Add(Label("De (opcional) · Hasta (opcional)"));
+        Body.Children.Add(Label("De · Hasta (déjalas en 00:00 si no tiene hora o no tiene fin)"));
         var hours = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
-        hours.Children.Add(Ui.WithPlaceholder(time, "12:00"));
+        hours.Children.Add(time);
         hours.Children.Add(new TextBlock { Text = "–", FontSize = 14, Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
-        hours.Children.Add(Ui.WithPlaceholder(end, "15:00"));
+        hours.Children.Add(end);
         Body.Children.Add(hours);
 
         // Days from today on, so "Mar" is the next Tuesday, not last week's.
@@ -488,20 +547,12 @@ public sealed class AddActivitySheet : SheetBase
         void Add()
         {
             if (text.Text.Trim().Length == 0) { error.Text = "Escribe qué es la actividad."; return; }
-            TimeSpan? at = null;
-            if (time.Text.Trim().Length > 0)
-            {
-                if (!AutoSwitch.TryParseTime(time.Text, out var t)) { error.Text = "La hora va así: 10:30."; return; }
-                at = t;
-            }
-            TimeSpan? until = null;
-            if (end.Text.Trim().Length > 0)
-            {
-                if (at is null) { error.Text = "Para poner hasta qué hora, pon también desde cuándo."; return; }
-                if (!AutoSwitch.TryParseTime(end.Text, out var t)) { error.Text = "La hora va así: 15:00."; return; }
-                if (t <= at) { error.Text = "Tiene que terminar después de empezar (el mismo día)."; return; }
-                until = t;
-            }
+            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(time.Text), out var from)) { error.Text = "Esa hora no existe: va de 00:00 a 23:59."; return; }
+            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(end.Text), out var to)) { error.Text = "Esa hora no existe: va de 00:00 a 23:59."; return; }
+            // 00:00 in both = no time; 00:00 as the end = no end.
+            TimeSpan? at = from == TimeSpan.Zero && to == TimeSpan.Zero ? null : from;
+            TimeSpan? until = to == TimeSpan.Zero ? null : to;
+            if (until <= at) { error.Text = "Tiene que terminar después de empezar (el mismo día)."; return; }
             var e = new ScheduleEvent(Guid.NewGuid().ToString("N")[..8], text.Text.Trim(), at,
                 weekly.IsChecked == true ? null : picked, weekly.IsChecked == true ? ShiftSchedule.Key(picked.DayOfWeek) : null, until);
             ScheduleEvent.WriteAll(c.Settings, [.. ScheduleEvent.ReadAll(c.Settings), e]);

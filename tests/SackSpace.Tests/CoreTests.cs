@@ -454,6 +454,19 @@ public class DesktopIconListTests
 
 public class AutoSwitchTests
 {
+    [Theory]
+    [InlineData("1100", "11:00")]
+    [InlineData("930", "09:30")]
+    [InlineData("9", "09:00")]
+    [InlineData("9:05", "09:05")]
+    [InlineData(" 23:59 ", "23:59")]
+    [InlineData("2400", null)]
+    [InlineData("1260", null)]
+    [InlineData("12345", null)]
+    [InlineData("abc", null)]
+    [InlineData("", null)]
+    public void Typed_times_are_tidied(string typed, string? expected) => Assert.Equal(expected, AutoSwitch.NormalizeTime(typed));
+
     [Fact]
     public void Schedules_cover_working_hours_overnight_slots_and_chosen_days()
     {
