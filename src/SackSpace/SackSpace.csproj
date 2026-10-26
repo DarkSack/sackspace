@@ -29,7 +29,8 @@
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Uncompressed: the assemblies are mapped from the exe instead of unpacked into memory (measured 69 MB vs 152 MB in use; 190 MB vs 78 MB on disk). -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
   </PropertyGroup>
 
