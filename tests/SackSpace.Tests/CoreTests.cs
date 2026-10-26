@@ -572,6 +572,15 @@ public class ShiftScheduleTests
 {
     private static readonly DateTime Monday = new(2026, 10, 26);
 
+    [Theory]
+    [InlineData("10:00-19:00 Trabajo", "Trabajo")]
+    [InlineData("Turno 10:00-19:00", "Turno")]
+    [InlineData("10:00-20:00 Trabajo, comida 16:00-17:00", "Trabajo")]
+    [InlineData("09:00-18:00 comida 14:00-15:00", "")]
+    [InlineData("22:00-06:00", "")]
+    public void A_shift_takes_its_name_from_the_words_around_the_hours(string text, string title) =>
+        Assert.Equal(title, ShiftSchedule.Parse(text)!.Title);
+
     [Fact]
     public void Days_parse_as_a_shift_with_its_break_or_as_a_day_off()
     {

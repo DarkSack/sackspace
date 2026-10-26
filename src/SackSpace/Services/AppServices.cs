@@ -41,6 +41,7 @@ public sealed class AppServices
         var dominant = primary is null ? null : Wallpaper.Get(primary).Dominant;
         Theme.Apply(Session.Config, dominant, animate);
         Wallpaper.BlurRadius = Theme.Current.BlurRadius;
+        Wallpaper.BlurByMonitor = Session.Config.Appearance.BlurByMonitor;
     }
 }
 

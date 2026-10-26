@@ -7,6 +7,12 @@ namespace SackSpace.Core.Widgets;
 /// <summary>One day of the work schedule: off, or a shift with an optional break.</summary>
 public sealed record Shift(TimeSpan Start, TimeSpan End, TimeSpan? BreakStart, TimeSpan? BreakEnd, string Text)
 {
+    /// <summary>
+    /// What the day is called, from the words around the hours: "10:00-19:00 Trabajo comida
+    /// 14:00-15:00" → "Trabajo" (the word just before the break's hours names the break).
+    /// </summary>
+    public string Title { get; init; } = "";
+
     public bool Overnight => End <= Start;
     public TimeSpan Length => Overnight ? End + TimeSpan.FromDays(1) - Start : End - Start;
 }
@@ -39,11 +45,15 @@ public static partial class ShiftSchedule
     public static Shift? Parse(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
-        var ranges = Range().Matches(text).Select(ToRange).Where(r => r is not null).Select(r => r!.Value).ToList();
-        if (ranges.Count == 0) return null;
-        var (start, end) = ranges[0];
+        var found = Range().Matches(text).Select(m => (Match: m, Range: ToRange(m))).Where(r => r.Range is not null).ToList();
+        if (found.Count == 0) return null;
+        var (start, end) = found[0].Range!.Value;
         if (start == end) return null;
-        return new Shift(start, end, ranges.Count > 1 ? ranges[1].Start : null, ranges.Count > 1 ? ranges[1].End : null, text.Trim());
+        var first = found[0].Match;
+        var after = found.Count > 1 ? text[(first.Index + first.Length)..found[1].Match.Index].Trim() : text[(first.Index + first.Length)..];
+        if (found.Count > 1) after = after.LastIndexOf(' ') is var cut and >= 0 ? after[..cut] : ""; // drop the break's own word
+        var title = (text[..first.Index] + " " + after).Trim(' ', ',', ';', '·', '-', '–');
+        return new Shift(start, end, found.Count > 1 ? found[1].Range!.Value.Start : null, found.Count > 1 ? found[1].Range!.Value.End : null, text.Trim()) { Title = title };
     }
 
     private static (TimeSpan Start, TimeSpan End)? ToRange(Match m)

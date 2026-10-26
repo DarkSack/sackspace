@@ -341,7 +341,7 @@ public partial class App : Application
             }
             // The settings pages, drawn without opening the window (dark background: Mica only exists on screen).
             var settings = new Settings.SettingsWindow(_s);
-            foreach (var page in new[] { "general", "espacios" })
+            foreach (var page in new[] { "general", "espacios", "apariencia" })
             {
                 settings.ShowPage(page);
                 var root = (FrameworkElement)settings.Content;

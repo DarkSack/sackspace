@@ -17,7 +17,7 @@ public sealed record WallpaperImage(BitmapSource Blurred, Native.RECT Bounds, Ar
 
 /// <summary>
 /// Glass without a live backdrop blur: the panels sit on the desktop, so what is behind
-/// them is the wallpaper. Each monitor's wallpaper is drawn once at 480 px wide, blurred,
+/// them is the wallpaper. Each monitor's wallpaper is drawn once at 480 px wide (up to 1280 with little blur), blurred,
 /// and every panel paints its own slice of it. Cheap (one small bitmap per monitor).
 /// With Wallpaper Engine or Lively the picture is that wallpaper's still preview: close in
 /// colour, not frame-exact (clear glass shows the moving one).
@@ -82,6 +82,21 @@ public sealed class WallpaperService
         }
     }
 
+    private Dictionary<string, double> _blurByMonitor = new();
+
+    /// <summary>Screens with their own blur; the rest use BlurRadius.</summary>
+    public IReadOnlyDictionary<string, double>? BlurByMonitor
+    {
+        get => _blurByMonitor;
+        set
+        {
+            value ??= new Dictionary<string, double>();
+            if (value.Count == _blurByMonitor.Count && value.All(kv => _blurByMonitor.TryGetValue(kv.Key, out var v) && Math.Abs(v - kv.Value) < 0.5)) return;
+            _blurByMonitor = new Dictionary<string, double>(value);
+            Invalidate();
+        }
+    }
+
     public void Invalidate()
     {
         _cache.Clear();
@@ -95,7 +110,7 @@ public sealed class WallpaperService
         try
         {
             var (source, label) = Pick(monitor);
-            image = Render(source, label, monitor.Bounds, _blurRadius, monitor.Scale);
+            image = Render(source, label, monitor.Bounds, _blurByMonitor.GetValueOrDefault(monitor.Key, _blurRadius), monitor.Scale);
             Log.Info($"Cristal de {monitor.DeviceName}: {label}");
         }
         catch (Exception ex)
@@ -151,8 +166,10 @@ public sealed class WallpaperService
     private static WallpaperImage Render(WallpaperSource source, string label, Native.RECT bounds, double blurDip, double scale)
     {
         int mw = Math.Max(1, bounds.Width), mh = Math.Max(1, bounds.Height);
-        var k = TargetWidth / (double)mw;
-        int w = TargetWidth, h = Math.Max(1, (int)Math.Round(mh * k));
+        // Little or no blur shows the picture's detail: then 480 px wide looks blocky.
+        var target = blurDip < 16 ? Math.Min(mw, 1280) : TargetWidth;
+        var k = target / (double)mw;
+        int w = target, h = Math.Max(1, (int)Math.Round(mh * k));
         var bg = Color.FromRgb((byte)(source.BackgroundColorRef & 0xFF), (byte)((source.BackgroundColorRef >> 8) & 0xFF), (byte)((source.BackgroundColorRef >> 16) & 0xFF));
 
         var (image, naturalW, naturalH) = Load(source.Path);

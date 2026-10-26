@@ -292,7 +292,14 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         foreach (var (day, from, to, offset, sh) in pieces)
         {
             var color = DayColors[day];
-            var range = new TextBlock { Text = ShiftSchedule.Range(sh).Replace(" ", ""), FontSize = 10, Margin = new Thickness(4, 2, 2, 0), TextTrimming = TextTrimming.CharacterEllipsis };
+            var range = new TextBlock { FontSize = 10, Margin = new Thickness(4, 2, 2, 0), TextWrapping = TextWrapping.WrapWithOverflow, TextTrimming = TextTrimming.CharacterEllipsis };
+            // Its name (what was written next to the hours) first, then the hours.
+            if (sh.Title.Length > 0)
+            {
+                range.Inlines.Add(new System.Windows.Documents.Run(sh.Title) { FontSize = 11.5, FontWeight = FontWeights.SemiBold });
+                range.Inlines.Add(new System.Windows.Documents.LineBreak());
+            }
+            range.Inlines.Add(new System.Windows.Documents.Run(ShiftSchedule.Range(sh).Replace(" ", "")));
             range.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             var block = new Border
             {

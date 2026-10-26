@@ -62,6 +62,8 @@ public sealed class AppearanceSettings
     /// <summary>Overrides of the theme; null = the theme's value.</summary>
     public double? GlassOpacity { get; set; }
     public double? BlurRadius { get; set; }
+    /// <summary>Blur per screen (monitor key), over BlurRadius; 0 = the wallpaper shows sharp.</summary>
+    public Dictionary<string, double>? BlurByMonitor { get; set; }
     public double? CornerRadius { get; set; }
     /// <summary>Picture blurred behind the glass instead of each screen's wallpaper; null = automatic.</summary>
     public string? CustomWallpaper { get; set; }

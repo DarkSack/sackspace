@@ -352,13 +352,22 @@ public sealed class SettingsWindow : Window
             Toggle(a.ClearGlass, v => { a.ClearGlass = v; Notify(ChangeKind.Appearance); }));
         Slide("Opacidad del cristal", "Más alto, más fácil de leer sobre fondos con mucho detalle.", 0.1, 0.95, 0.05, t.GlassOpacity,
             v => $"{v * 100:0} %", v => a.GlassOpacity = v);
-        Slide("Desenfoque", "Cuánto se difumina el fondo de pantalla detrás de los paneles.", 0, 80, 2, t.BlurRadius,
-            v => $"{v:0} px", v => a.BlurRadius = v);
+        // One per screen: each may have a busier or calmer wallpaper.
+        var monitors = _s.Hosts.Monitors;
+        for (var i = 0; i < monitors.Count; i++)
+        {
+            var key = monitors[i].Key;
+            Slide(monitors.Count == 1 ? "Desenfoque" : "Desenfoque · " + monitors[i].Label(i),
+                "En 0 el fondo se ve nítido; más alto, más difuminado detrás de los paneles.", 0, 80, 2,
+                a.BlurByMonitor?.GetValueOrDefault(key, t.BlurRadius) ?? t.BlurRadius,
+                v => $"{v:0} px", v => (a.BlurByMonitor ??= new())[key] = v);
+        }
         Slide("Esquinas", "Radio de los bordes redondeados.", 0, 32, 1, t.CornerRadius,
             v => $"{v:0} px", v => a.CornerRadius = v);
         var reset = Ui.Pill("Volver a los valores del tema", () =>
         {
             a.GlassOpacity = a.BlurRadius = a.CornerRadius = null;
+            a.BlurByMonitor = null;
             Notify(ChangeKind.Appearance);
             Refresh();
         }, glyph: Glyphs.Undo);
