@@ -90,6 +90,8 @@ public partial class App : Application
         s.Governor.PausedChanged += paused => { s.Clock.Paused = paused; s.System.Paused = paused; };
         s.Wallpaper.Changed += () => { s.Hosts.OnWallpaperChanged(); s.ApplyTheme(true); };
         s.Session.Changed += OnConfigChanged;
+        // A new or recovered config goes to disk right away, not at the first change.
+        if (outcome != LoadOutcome.Loaded && snapshot is null) s.Session.MarkDirty();
         _lastGeneral = Copy(config.General);
 
         if (snapshot is not null)

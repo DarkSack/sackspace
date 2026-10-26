@@ -222,7 +222,9 @@ public sealed class SettingsWindow : Window
     private static CheckBox Toggle(bool value, Action<bool> changed)
     {
         var t = new CheckBox { Style = Ui.Style("ToggleSwitch"), IsChecked = value };
-        t.Click += (_, _) => changed(t.IsChecked == true);
+        // Checked/Unchecked, not Click: keyboard, mouse and accessibility tools all toggle it.
+        t.Checked += (_, _) => changed(true);
+        t.Unchecked += (_, _) => changed(false);
         return t;
     }
 
