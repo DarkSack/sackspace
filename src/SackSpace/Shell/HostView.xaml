@@ -36,6 +36,13 @@
                         <TextBlock Text="Ordenar" />
                     </StackPanel>
                 </Button>
+                <Button x:Name="IconsButton" Style="{StaticResource PillButton}" Margin="8,0,0,0" Visibility="Collapsed"
+                        ToolTip="Qué iconos del escritorio se ven en este espacio">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE7F4;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,8,0" />
+                        <TextBlock Text="Iconos" />
+                    </StackPanel>
+                </Button>
                 <Button x:Name="DoneButton" Style="{StaticResource PillButton}" Margin="8,0,0,0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE8FB;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,8,0" />

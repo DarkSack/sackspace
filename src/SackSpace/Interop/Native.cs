@@ -42,6 +42,16 @@ public static partial class Native
     [LibraryImport("user32.dll", EntryPoint = "FindWindowW", StringMarshalling = StringMarshalling.Utf16)]
     public static partial IntPtr FindWindow(string? className, string? windowName);
 
+    [LibraryImport("user32.dll", EntryPoint = "FindWindowExW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? className, string? windowName);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsWindowVisible(IntPtr hwnd);
+
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
+    public static partial IntPtr SendMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
+
     [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     public static partial IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
 

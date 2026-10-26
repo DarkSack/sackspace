@@ -120,6 +120,11 @@ public sealed class HostManager
         foreach (var v in Views) v.UpdateWallpaper();
     }
 
+    public void ReloadIcons()
+    {
+        foreach (var v in Views) v.ReloadIcons();
+    }
+
     // ── Bar ──────────────────────────────────────────────────
 
     /// <summary>The workspace bar lives on the primary monitor, if the user wants it.</summary>

@@ -273,6 +273,8 @@ public sealed class SettingsWindow : Window
             Toggle(g.UseAllMonitors, v => { g.UseAllMonitors = v; Notify(ChangeKind.General); }));
         Card("Barra de espacios", "Las pestañas arriba de la pantalla principal para cambiar de espacio.",
             Toggle(g.ShowWorkspaceBar, v => { g.ShowWorkspaceBar = v; Notify(ChangeKind.General); }));
+        Card("Iconos del escritorio por espacio", "Cada espacio muestra solo los iconos que elijas: clic derecho sobre un icono, o el lápiz de la barra › Iconos. SackSpace oculta los de Windows mientras está abierto; al salir vuelven. No se mueve ni cambia ningún archivo.",
+            Toggle(g.DesktopIcons, v => { g.DesktopIcons = v; Notify(ChangeKind.General); }));
         Card("Animaciones", "Movimientos suaves al cambiar de espacio y al mover paneles. Se apagan solas si Windows tiene los efectos desactivados.",
             Toggle(g.Animations, v => { g.Animations = v; Notify(ChangeKind.General); }));
         Card("Pausar con pantalla completa", "Relojes y medidores descansan mientras juegas o ves un vídeo a pantalla completa, y con la sesión bloqueada.",

@@ -29,6 +29,7 @@ internal static partial class ShellNames
     public static string DisplayName(string path)
     {
         if (path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)) return ShortcutItem.NameFor(path);
+        if (path.StartsWith("::")) return ShellObjectName(path) ?? path;
         var info = new SHFILEINFO();
         var ok = SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_DISPLAYNAME) != IntPtr.Zero;
         var name = ok ? info.szDisplayName : "";
@@ -37,6 +38,27 @@ internal static partial class ShellNames
             ? ShortcutItem.NameFor(path)
             : name;
     }
+
+    /// <summary>"Papelera de reciclaje" for "::{645FF040-…}": SHGetFileInfo only takes these as an item id list.</summary>
+    private static string? ShellObjectName(string parsingName)
+    {
+        if (SHParseDisplayName(parsingName, IntPtr.Zero, out var pidl, 0, out _) != 0) return null;
+        try
+        {
+            var info = new SHFILEINFO();
+            return SHGetFileInfo(pidl, 0, ref info, (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_DISPLAYNAME | SHGFI_PIDL) != IntPtr.Zero
+                && !string.IsNullOrWhiteSpace(info.szDisplayName) ? info.szDisplayName : null;
+        }
+        finally { Marshal.FreeCoTaskMem(pidl); }
+    }
+
+    private const uint SHGFI_PIDL = 0x8;
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHParseDisplayName(string name, IntPtr bindContext, out IntPtr pidl, uint attributesIn, out uint attributesOut);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHGetFileInfoW")]
+    private static extern IntPtr SHGetFileInfo(IntPtr pidl, uint attributes, ref SHFILEINFO info, uint size, uint flags);
 
     private static readonly Dictionary<string, Guid> Known = new()
     {

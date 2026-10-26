@@ -68,6 +68,7 @@ public partial class HostView : UserControl
 
         AddWidgetButton.Click += (_, _) => OpenGallery();
         ArrangeButton.Click += (_, _) => ArrangePanels();
+        IconsButton.Click += (_, _) => { if (CurrentWorkspace is { } ws) OpenSheet(new DesktopIconsSheet(this, ws)); };
         DoneButton.Click += (_, _) => Manager.SetEditing(false);
         // A click on the blurred backdrop is a click "on the desktop": back to normal.
         Backdrop.MouseLeftButtonDown += (_, e) => { e.Handled = true; Manager.SetRaised(false); };
@@ -108,9 +109,22 @@ public partial class HostView : UserControl
     private Canvas BuildLayer(Workspace ws)
     {
         var canvas = new Canvas();
+        if (ShowsIcons) canvas.Children.Add(new DesktopIconGrid(this, ws));
         foreach (var panel in ws.Panels.Where(p => !p.Hidden && Monitor.Owns(p.Monitor, Manager.Monitors)).OrderBy(p => p.Z))
             canvas.Children.Add(MakeHost(panel));
         return canvas;
+    }
+
+    /// <summary>Desktop icons go on the primary monitor, like Windows' own on a fresh setup.</summary>
+    private bool ShowsIcons => Services.Icons.Enabled && Monitor.IsPrimary;
+
+    /// <summary>Redraws the desktop icons of the workspace shown, leaving its panels alone.</summary>
+    public void ReloadIcons()
+    {
+        if (_layer is null || CurrentWorkspace is not { } ws) return;
+        foreach (var old in _layer.Children.OfType<DesktopIconGrid>().ToList()) _layer.Children.Remove(old);
+        if (ShowsIcons) _layer.Children.Insert(0, new DesktopIconGrid(this, ws));
+        IconsButton.Visibility = ShowsIcons ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private PanelHost MakeHost(PanelState panel)
@@ -167,6 +181,7 @@ public partial class HostView : UserControl
             Anim.SlideIn(EditToolbar, 0, 30);
         }
         else if (!editing) EditToolbar.Visibility = Visibility.Collapsed;
+        IconsButton.Visibility = ShowsIcons ? Visibility.Visible : Visibility.Collapsed;
         foreach (var p in Panels) p.SetEditing(editing);
         Bar?.SetEditing(editing);
         if (!raised) CloseSheet();

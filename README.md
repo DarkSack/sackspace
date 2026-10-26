@@ -7,6 +7,7 @@ Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difum
 - **Diseño libre**: mantén pulsado un panel (o el lápiz de la barra) para moverlo, cambiarle el tamaño, ocultarlo o quitarlo; se alinea solo a los bordes y a una rejilla. «Ordenar» los coloca sin encimarse.
 - **Varios monitores**: cada pantalla tiene sus paneles; un panel se manda a otra pantalla con el clic derecho.
 - **Temas**: cinco incluidos y los tuyos en JSON ([docs/TEMAS.md](docs/TEMAS.md)). Acento por espacio, tomado del fondo de pantalla, del tema o a tu gusto; opacidad, desenfoque y esquinas ajustables.
+- **Iconos del escritorio por espacio** (Ajustes › General): cada espacio muestra solo los iconos que elijas, con el clic derecho sobre un icono o con el lápiz › Iconos. SackSpace oculta los de Windows mientras está abierto y los dibuja él; al salir vuelven. No mueve ni cambia ningún archivo.
 - **Fondos animados**: con Wallpaper Engine o Lively, el cristal toma el fondo de cada pantalla (su vista previa). También puede usar una imagen propia, o ser transparente y dejar ver el fondo en movimiento.
 - **Se guarda solo**: cada cambio se escribe al momento (con copia del anterior). Exportar e importar una copia desde Ajustes.
 - **Privado**: no usa internet, no tiene cuentas ni estadísticas. Todo queda en `%LOCALAPPDATA%\SackSpace`.

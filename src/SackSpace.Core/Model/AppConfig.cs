@@ -35,6 +35,8 @@ public sealed class GeneralSettings
     public bool Animations { get; set; } = true;
     /// <summary>Stop the clocks and meters while a game or video runs full screen.</summary>
     public bool PauseInFullscreen { get; set; } = true;
+    /// <summary>SackSpace draws the desktop icons (Windows' own are hidden) and each workspace shows its own.</summary>
+    public bool DesktopIcons { get; set; }
 }
 
 public enum AccentMode
@@ -71,6 +73,8 @@ public sealed class Workspace
     public string Icon { get; set; } = Glyphs.Home;
     public string Accent { get; set; } = "#7C9CFF";
     public List<PanelState> Panels { get; set; } = new();
+    /// <summary>Desktop icons shown here (paths, or "::{CLSID}" for Recycle Bin and the like); null = all of them.</summary>
+    public List<string>? DesktopIcons { get; set; }
 
     public static string NewId() => Guid.NewGuid().ToString("N")[..12];
 }

@@ -39,6 +39,17 @@ Ninguna de las dos apps avisa a Windows cuando cambia su fondo, así que cada 8 
 
 **Cristal transparente**: los paneles y la barra no pintan el bitmap ni la sombra (que es una forma opaca), solo el tinte. Como la ventana es transparente por píxel, se ve el escritorio en vivo, también un fondo animado.
 
+## Iconos del escritorio por espacio
+
+Windows no deja ocultar iconos sueltos del escritorio sin tocar los archivos, y tocarlos no sirve: el escritorio suele estar en OneDrive (el cambio se sincronizaría), los iconos de «Acceso público» piden administrador, y Explorer puede estar configurado para enseñar los ocultos. Por eso, con la opción encendida:
+
+1. `DesktopItems.ShowWindowsIcons(false)` usa el mismo interruptor que «Ver › Mostrar iconos del escritorio» (`WM_COMMAND 0x7402` a `SHELLDLL_DefView`). Explorer lo recuerda.
+2. `DesktopItems.List()` lee el escritorio del usuario, el público y los iconos de sistema activos (Papelera, Este equipo…, según `HideDesktopIcons\NewStartPanel`).
+3. `DesktopIconGrid` los dibuja en la capa del espacio, bajo los paneles, en columnas como «Organizar automáticamente» y con el tamaño de icono de Windows.
+4. Cada `Workspace.DesktopIcons` es la lista de rutas que muestra; `null` = todas. Lo nuevo que aparece en el escritorio entra en el espacio activo, y un renombrado conserva sus espacios (`DesktopIconLists`, con pruebas).
+
+Al apagar la opción o salir desde la bandeja vuelven los iconos de Windows. Si SackSpace se cierra a la fuerza, siguen ocultos hasta que vuelva a abrirse, o hasta usar «Ver › Mostrar iconos del escritorio».
+
 ## Configuración
 
 - **Archivo**: `AppConfig` → `%LOCALAPPDATA%\SackSpace\config.json`.

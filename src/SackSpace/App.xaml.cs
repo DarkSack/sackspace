@@ -69,10 +69,12 @@ public partial class App : Application
         Anim.Configure(config.General.Animations && snapshot is null);
         WidgetRegistry.RegisterBuiltIns();
 
+        var session = new ConfigSession(store, config);
         var s = new AppServices
         {
             DataFolder = data,
-            Session = new ConfigSession(store, config),
+            Session = session,
+            Icons = new DesktopIconService(session),
             Theme = new ThemeService(data),
             Wallpaper = new WallpaperService(),
             Clock = new ClockTicker(),
@@ -84,7 +86,9 @@ public partial class App : Application
         AppServices.Current = _s = s;
         s.Hosts = new HostManager(s);
         s.ApplyTheme(false); // brushes exist before the first window
+        s.Icons.Enable(config.General.DesktopIcons, touchWindows: snapshot is null);
         s.Hosts.Build(show: snapshot is null);
+        s.Icons.Changed += s.Hosts.ReloadIcons;
         s.ApplyTheme(false); // again, now that the wallpaper colour is known
 
         s.Governor.PausedChanged += paused => { s.Clock.Paused = paused; s.System.Paused = paused; };
@@ -173,6 +177,7 @@ public partial class App : Application
             s.Governor.PauseInFullscreen = config.General.PauseInFullscreen;
             if (config.General.StartWithWindows != _lastGeneral.StartWithWindows) Autostart.Apply(config.General.StartWithWindows);
             _lastGeneral = Copy(config.General);
+            s.Icons.Enable(config.General.DesktopIcons);
             s.Hosts.Rebuild();
             RegisterHotkeys();
             return;
@@ -185,6 +190,7 @@ public partial class App : Application
             Anim.Configure(g.Animations);
             s.Governor.PauseInFullscreen = g.PauseInFullscreen;
             if (g.StartWithWindows != _lastGeneral.StartWithWindows) Autostart.Apply(g.StartWithWindows);
+            if (g.DesktopIcons != _lastGeneral.DesktopIcons) s.Icons.Enable(g.DesktopIcons);
             if (g.UseAllMonitors != _lastGeneral.UseAllMonitors) s.Hosts.Rebuild();
             else if (g.ShowWorkspaceBar != _lastGeneral.ShowWorkspaceBar) s.Hosts.UpdateBar();
             _lastGeneral = Copy(g);
@@ -201,6 +207,7 @@ public partial class App : Application
         ShowWorkspaceBar = g.ShowWorkspaceBar,
         Animations = g.Animations,
         PauseInFullscreen = g.PauseInFullscreen,
+        DesktopIcons = g.DesktopIcons,
     };
 
     private void RegisterHotkeys()
@@ -246,6 +253,7 @@ public partial class App : Application
         _tray?.Dispose();
         _s?.Hotkeys?.Dispose();
         _s?.Hosts.CloseSettings();
+        _s?.Icons.Enable(false); // Windows' own desktop icons come back
         _s?.Hosts.CloseAll();
         Shutdown();
     }
@@ -280,6 +288,12 @@ public partial class App : Application
             hosts.PrimaryView?.OpenGallery();
             await Task.Delay(400);
             SaveViews(dir, $"{n}-galeria");
+            if (_s.Icons.Enabled && hosts.PrimaryView is { CurrentWorkspace: { } current } primary)
+            {
+                primary.OpenSheet(new DesktopIconsSheet(primary, current));
+                await Task.Delay(800);
+                SaveViews(dir, $"{n + 1}-iconos");
+            }
             Log.Info("Capturas guardadas en " + dir);
         }
         catch (Exception ex)

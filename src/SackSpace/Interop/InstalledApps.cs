@@ -61,7 +61,7 @@ internal static class InstalledApps
         error = null;
         try
         {
-            var psi = path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)
+            var psi = path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || path.StartsWith("::")
                 ? new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true }
                 : new ProcessStartInfo(path) { UseShellExecute = true, WorkingDirectory = SafeDirectory(path) };
             Process.Start(psi)?.Dispose();
@@ -86,7 +86,7 @@ internal static class InstalledApps
     }
 
     public static bool Exists(string path) =>
-        path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || File.Exists(path) || Directory.Exists(path);
+        path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || path.StartsWith("::") || File.Exists(path) || Directory.Exists(path);
 
     private static string SafeDirectory(string path)
     {

@@ -425,3 +425,29 @@ public class LiveWallpaperTests : IDisposable
         Assert.Equal("Playa", LiveWallpapers.Lively(_dir, Tablet)?.Title);
     }
 }
+
+public class DesktopIconListTests
+{
+    [Fact]
+    public void Each_workspace_keeps_its_own_icons_and_new_ones_land_where_they_were_made()
+    {
+        var personal = new Workspace { Name = "Personal" };
+        var work = new Workspace { Name = "Trabajo" };
+        var config = new AppConfig { Workspaces = [personal, work], ActiveWorkspaceId = work.Id };
+        string[] all = ["d/Juego.url", "d/Postman.lnk", "::{645FF040-5081-101B-9F08-00AA002F954E}"];
+
+        Assert.True(DesktopIconLists.Shows(personal, "d/Juego.url")); // no list yet: everything
+
+        DesktopIconLists.Set(work, "d/juego.URL", show: false, all); // case does not matter
+        Assert.Equal(["d/Postman.lnk", "::{645FF040-5081-101B-9F08-00AA002F954E}"], work.DesktopIcons);
+        Assert.Null(personal.DesktopIcons);
+
+        Assert.True(DesktopIconLists.Created(config, "d/Nuevo.txt"));      // active workspace has a list
+        Assert.False(DesktopIconLists.Created(config, "d/Nuevo.txt"));     // only once
+        Assert.True(DesktopIconLists.Shows(work, "d/Nuevo.txt"));
+
+        Assert.True(DesktopIconLists.Renamed(config, "d/Postman.lnk", "d/Postman 2.lnk"));
+        Assert.True(DesktopIconLists.Shows(work, "d/Postman 2.lnk"));
+        Assert.False(DesktopIconLists.Shows(work, "d/Postman.lnk"));
+    }
+}
