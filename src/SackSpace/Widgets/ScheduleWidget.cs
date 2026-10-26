@@ -35,6 +35,9 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
     private readonly StackPanel _today = new() { Margin = new Thickness(0, 6, 0, 0) };
     private readonly Grid _week = new() { Margin = new Thickness(0, 10, 0, 0) };
     private readonly Button _fold;
+    private int _first;          // first hour on the timetable
+    private DateTime _monday;    // its week
+    private bool _dragging;
 
     public ScheduleWidget(WidgetContext c)
     {
@@ -85,7 +88,11 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         Refresh();
     }
 
-    private void Refresh(DateTime _) => Refresh();
+    // Not mid-drag: redrawing would drop the block being dragged.
+    private void Refresh(DateTime _)
+    {
+        if (!_dragging) Refresh();
+    }
 
     private void Refresh()
     {
@@ -126,7 +133,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         _today.Children.Clear();
         foreach (var e in ShiftSchedule.EventsOn(s, now))
         {
-            var past = e.Time is { } t && t < now.TimeOfDay;
+            var past = (e.End ?? e.Time) is { } t && t < now.TimeOfDay;
             _today.Children.Add(EventLine(e, past ? "TextTertiaryBrush" : "TextBrush", 13));
         }
         if (expanded) DrawWeek(now);
@@ -174,14 +181,14 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         }
         var events = Enumerable.Range(0, 7).Select(i => ShiftSchedule.EventsOn(s, monday.AddDays(i))).ToList();
         var times = pieces.SelectMany(p => new[] { p.From, p.To })
-            .Concat(events.SelectMany(d => d).Where(e => e.Time is not null)
-                .SelectMany(e => new[] { (int)e.Time!.Value.TotalMinutes, Math.Min(1440, (int)e.Time.Value.TotalMinutes + EventSpan) }))
+            .Concat(events.SelectMany(d => d).Where(e => e.Time is not null).SelectMany(e => new[] { e.Span(EventSpan).From, e.Span(EventSpan).To }))
             .ToList();
         var first = times.Count > 0 ? times.Min() / 60 : 8;
         var last = times.Count > 0 ? (times.Max() + 59) / 60 : 18;
         if (last - first < 8) last = Math.Min(24, first + 8);
         if (last - first < 8) first = last - 8;
         var hours = last - first;
+        (_first, _monday) = (first, monday);
         int Row(int minutes) => 2 + (Math.Clamp(minutes, first * 60, last * 60) - first * 60) / 15;
 
         _week.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(38) });
@@ -246,17 +253,33 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
             foreach (var e in events[i].Where(e => e.Time is null)) untimed.Children.Add(EventLine(e, "TextBrush", 11));
             Put(untimed, 1, i + 1);
 
-            foreach (var e in events[i].Where(e => e.Time is not null))
+            // Activities sit over the shift; ones that overlap each other share the column side by side.
+            var timed = events[i].Where(e => e.Time is not null).ToList();
+            var lanes = ScheduleEvent.Lanes(timed.Select(e => e.Span(EventSpan)).ToList());
+            for (var k = 0; k < timed.Count; k++)
             {
-                var at = (int)e.Time!.Value.TotalMinutes;
+                var e = timed[k];
+                var (from, to) = e.Span(EventSpan);
                 var block = new Border
                 {
-                    Background = Frozen(color), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 1, 3, 1), Padding = new Thickness(3, 0, 3, 0),
-                    ToolTip = e.Label + (e.Weekly is not null ? " · cada semana" : "") + "\nClic derecho para quitarla.",
+                    Background = Frozen(color), BorderBrush = Ink, BorderThickness = new Thickness(0.5), CornerRadius = new CornerRadius(4),
+                    Margin = new Thickness(1), Padding = new Thickness(3, 0, 3, 0),
+                    ToolTip = e.Label + (e.Weekly is not null ? " · cada semana" : "") + "\nArrástrala para moverla; clic derecho para quitarla.",
                     ContextMenu = RemoveMenu(e),
-                    Child = new TextBlock { Text = e.Label, Foreground = Ink, FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center },
                 };
-                Put(block, Row(at), i + 1, Row(at + EventSpan) - Row(at), z: 2);
+                // What first, then when: in a narrow lane the name is what you need to read.
+                var label = new TextBlock { Foreground = Ink, FontSize = 10.5, TextWrapping = TextWrapping.WrapWithOverflow, TextTrimming = TextTrimming.CharacterEllipsis };
+                label.Inlines.Add(new System.Windows.Documents.Run(e.Text) { FontWeight = FontWeights.SemiBold });
+                label.Inlines.Add(new System.Windows.Documents.LineBreak());
+                label.Inlines.Add(new System.Windows.Documents.Run(e.End is { } end ? $"{e.Time:hh\\:mm}–{end:hh\\:mm}" : $"{e.Time:hh\\:mm}") { FontSize = 9.5 });
+                block.Child = label;
+                block.ClipToBounds = true;
+                var lane = new Grid { Margin = new Thickness(4, 0, 2, 0) };
+                for (var l = 0; l < lanes[k].Lanes; l++) lane.ColumnDefinitions.Add(new ColumnDefinition());
+                Grid.SetColumn(block, lanes[k].Lane);
+                lane.Children.Add(block);
+                Draggable(block, lane, e);
+                Put(lane, Row(from), i + 1, Row(to) - Row(from), z: 2);
             }
         }
 
@@ -293,6 +316,93 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
             mark.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
             Put(mark, Row(minute), todayCol, z: 3);
         }
+    }
+
+    /// <summary>
+    /// Drag an activity to another hour or day of this week; it snaps to the quarter hour
+    /// and keeps its length. A weekly one moves to the new weekday every week.
+    /// </summary>
+    private void Draggable(FrameworkElement block, FrameworkElement layer, ScheduleEvent e)
+    {
+        var start = new Point();
+        var moving = false;
+        var offset = new TranslateTransform();
+        block.RenderTransform = offset;
+        block.Cursor = Cursors.SizeAll;
+        block.MouseLeftButtonDown += (_, a) =>
+        {
+            start = a.GetPosition(_week);
+            block.CaptureMouse();
+            a.Handled = true; // not the panel's own drag
+        };
+        block.MouseMove += (_, a) =>
+        {
+            if (!block.IsMouseCaptured) return;
+            var p = a.GetPosition(_week);
+            if (!moving && (p - start).Length < 4) return;
+            moving = _dragging = true;
+            Panel.SetZIndex(layer, 10);
+            (offset.X, offset.Y) = (p.X - start.X, p.Y - start.Y);
+        };
+        block.MouseLeftButtonUp += (_, a) =>
+        {
+            if (!block.IsMouseCaptured) return;
+            a.Handled = true;
+            var dropped = moving;
+            var (day, minute) = (Day(a.GetPosition(_week).X), Minute(block.TranslatePoint(new Point(), _week).Y));
+            moving = _dragging = false;
+            block.ReleaseMouseCapture();
+            if (dropped) Move(e, day, minute);
+        };
+        // Another window taking the mouse: back to where it was.
+        block.LostMouseCapture += (_, _) =>
+        {
+            if (!moving) return;
+            moving = _dragging = false;
+            (offset.X, offset.Y) = (0, 0);
+        };
+    }
+
+    /// <summary>The weekday column (0 = Monday) under x.</summary>
+    private int Day(double x)
+    {
+        var col = 1;
+        for (var c = 1; c <= 7; c++) if (_week.ColumnDefinitions[c].Offset <= x) col = c;
+        return col - 1;
+    }
+
+    /// <summary>The minute of the day at y, to the nearest quarter hour.</summary>
+    private int Minute(double y)
+    {
+        var rows = _week.RowDefinitions;
+        var quarter = 0;
+        for (var r = 2; r < rows.Count; r++)
+            if (rows[r].Offset - rows[r].ActualHeight / 2 <= y) quarter = r - 2;
+        return _first * 60 + quarter * 15;
+    }
+
+    private void Move(ScheduleEvent e, int day, int minute)
+    {
+        var date = _monday.AddDays(day);
+        if (e.Date is not null && date < DateTime.Today)
+        {
+            _c.Toast("Ese día ya pasó.");
+            Refresh();
+            return;
+        }
+        var (from, to) = e.Span(EventSpan);
+        var length = to - from;
+        minute = Math.Clamp(minute, 0, 1439 - (e.End is null ? 0 : length));
+        var moved = e with
+        {
+            Time = TimeSpan.FromMinutes(minute),
+            End = e.End is null ? null : TimeSpan.FromMinutes(minute + length),
+            Date = e.Date is null ? null : date,
+            Weekly = e.Weekly is null ? null : ShiftSchedule.Key(date.DayOfWeek),
+        };
+        ScheduleEvent.WriteAll(_c.Settings, ScheduleEvent.ReadAll(_c.Settings).Select(x => x.Id == e.Id ? moved : x));
+        _c.Save();
+        Refresh();
     }
 
     private static Brush Frozen(Color c)
@@ -338,11 +448,16 @@ public sealed class AddActivitySheet : SheetBase
     public AddActivitySheet(WidgetContext c, Action added) : base(c.Host, Glyphs.Add, "Nueva actividad", 420)
     {
         var text = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 60, Margin = new Thickness(0, 0, 0, 12) };
-        var time = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 5, Width = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
+        var time = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 5, Width = 90 };
+        var end = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 5, Width = 90 };
         Body.Children.Add(Label("Qué"));
         Body.Children.Add(Ui.WithPlaceholder(text, "Junta, coaching, entregar reporte…"));
-        Body.Children.Add(Label("Hora (opcional)"));
-        Body.Children.Add(Ui.WithPlaceholder(time, "10:30"));
+        Body.Children.Add(Label("De (opcional) · Hasta (opcional)"));
+        var hours = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
+        hours.Children.Add(Ui.WithPlaceholder(time, "12:00"));
+        hours.Children.Add(new TextBlock { Text = "–", FontSize = 14, Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
+        hours.Children.Add(Ui.WithPlaceholder(end, "15:00"));
+        Body.Children.Add(hours);
 
         // Days from today on, so "Mar" is the next Tuesday, not last week's.
         Body.Children.Add(Label("Día"));
@@ -379,8 +494,16 @@ public sealed class AddActivitySheet : SheetBase
                 if (!AutoSwitch.TryParseTime(time.Text, out var t)) { error.Text = "La hora va así: 10:30."; return; }
                 at = t;
             }
+            TimeSpan? until = null;
+            if (end.Text.Trim().Length > 0)
+            {
+                if (at is null) { error.Text = "Para poner hasta qué hora, pon también desde cuándo."; return; }
+                if (!AutoSwitch.TryParseTime(end.Text, out var t)) { error.Text = "La hora va así: 15:00."; return; }
+                if (t <= at) { error.Text = "Tiene que terminar después de empezar (el mismo día)."; return; }
+                until = t;
+            }
             var e = new ScheduleEvent(Guid.NewGuid().ToString("N")[..8], text.Text.Trim(), at,
-                weekly.IsChecked == true ? null : picked, weekly.IsChecked == true ? ShiftSchedule.Key(picked.DayOfWeek) : null);
+                weekly.IsChecked == true ? null : picked, weekly.IsChecked == true ? ShiftSchedule.Key(picked.DayOfWeek) : null, until);
             ScheduleEvent.WriteAll(c.Settings, [.. ScheduleEvent.ReadAll(c.Settings), e]);
             c.Save();
             added();
@@ -388,6 +511,7 @@ public sealed class AddActivitySheet : SheetBase
         }
         text.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
         time.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
+        end.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
         var ok = Ui.Pill("Añadir", Add, accent: true, glyph: Glyphs.Add);
         ok.HorizontalAlignment = HorizontalAlignment.Right;
         Body.Children.Add(ok);

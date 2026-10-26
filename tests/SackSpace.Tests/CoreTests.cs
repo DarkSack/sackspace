@@ -637,4 +637,20 @@ public class ScheduleEventTests
         Assert.False(ShiftSchedule.DropPast(s, monday));
         Assert.Equal(new DateTime(2026, 10, 26), ShiftSchedule.WeekStart(new DateTime(2026, 11, 1))); // Sunday → its Monday
     }
+
+    [Fact]
+    public void Activities_keep_their_end_and_overlapping_ones_share_the_width()
+    {
+        var s = new JsonObject();
+        ScheduleEvent.WriteAll(s, [new("j", "Junta", TimeSpan.FromHours(12), null, "mon", TimeSpan.FromHours(15))]);
+        var junta = ScheduleEvent.ReadAll(s)[0];
+        Assert.Equal(TimeSpan.FromHours(15), junta.End);
+        Assert.Equal("12:00–15:00  Junta", junta.Label);
+        Assert.Equal((720, 900), junta.Span());
+        Assert.Equal((600, 660), new ScheduleEvent("x", "Sin fin", TimeSpan.FromHours(10), null, "mon").Span());
+
+        // 12–15 and 13–14 overlap (two lanes), 14–16 reuses lane 1, 17–18 stands alone.
+        var lanes = ScheduleEvent.Lanes([(720, 900), (780, 840), (840, 960), (1020, 1080)]);
+        Assert.Equal([(0, 2), (1, 2), (1, 2), (0, 1)], lanes);
+    }
 }

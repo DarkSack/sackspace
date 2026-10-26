@@ -123,13 +123,52 @@ public static partial class ShiftSchedule
 
 /// <summary>
 /// An activity in the schedule: on one date, or every week on a weekday ("mon"…"sun").
-/// Time is optional. Stored in the panel's settings under "events".
+/// Time is optional, and so is End (only with a time, after it, same day).
+/// Stored in the panel's settings under "events".
 /// </summary>
-public sealed record ScheduleEvent(string Id, string Text, TimeSpan? Time, DateTime? Date, string? Weekly)
+public sealed record ScheduleEvent(string Id, string Text, TimeSpan? Time, DateTime? Date, string? Weekly, TimeSpan? End = null)
 {
     public bool On(DateTime date) => Date is { } d ? d.Date == date.Date : Weekly == ShiftSchedule.Key(date.DayOfWeek);
 
-    public string Label => Time is { } t ? $"{t:hh\\:mm}  {Text}" : Text;
+    public string Label => Time is { } t ? (End is { } e ? $"{t:hh\\:mm}–{e:hh\\:mm}  {Text}" : $"{t:hh\\:mm}  {Text}") : Text;
+
+    /// <summary>Minutes of the day it covers on the timetable; without an end, an hour.</summary>
+    public (int From, int To) Span(int defaultLength = 60)
+    {
+        var from = (int)(Time ?? TimeSpan.Zero).TotalMinutes;
+        return (from, End is { } e && e > Time ? (int)e.TotalMinutes : Math.Min(1439, from + defaultLength));
+    }
+
+    /// <summary>
+    /// Side-by-side lanes for blocks that overlap: each gets a lane and how many lanes its
+    /// group of overlapping blocks needs. Results in input order.
+    /// </summary>
+    public static (int Lane, int Lanes)[] Lanes(IReadOnlyList<(int From, int To)> blocks)
+    {
+        var result = new (int Lane, int Lanes)[blocks.Count];
+        var group = new List<int>();
+        var laneEnds = new List<int>();
+        var groupEnd = int.MinValue;
+        void Close()
+        {
+            foreach (var g in group) result[g].Lanes = laneEnds.Count;
+            group.Clear();
+            laneEnds.Clear();
+        }
+        foreach (var i in Enumerable.Range(0, blocks.Count).OrderBy(i => blocks[i].From).ThenBy(i => blocks[i].To))
+        {
+            var (from, to) = blocks[i];
+            if (from >= groupEnd) Close();
+            var lane = laneEnds.FindIndex(end => end <= from);
+            if (lane < 0) { lane = laneEnds.Count; laneEnds.Add(to); }
+            else laneEnds[lane] = to;
+            result[i].Lane = lane;
+            group.Add(i);
+            groupEnd = Math.Max(from >= groupEnd ? to : groupEnd, to);
+        }
+        Close();
+        return result;
+    }
 
     public static List<ScheduleEvent> ReadAll(JsonObject settings) =>
         settings["events"] is JsonArray items
@@ -138,7 +177,8 @@ public sealed record ScheduleEvent(string Id, string Text, TimeSpan? Time, DateT
                     o.GetString("text", ""),
                     ParseTime(o.GetString("time", "")),
                     DateTime.TryParseExact(o.GetString("date", ""), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null,
-                    o["weekly"] is null ? null : o.GetString("weekly", "")))
+                    o["weekly"] is null ? null : o.GetString("weekly", ""),
+                ParseTime(o.GetString("end", ""))))
                 .Where(e => e.Text.Length > 0 && (e.Date is not null || e.Weekly is not null))
                 .ToList()
             : [];
@@ -148,6 +188,7 @@ public sealed record ScheduleEvent(string Id, string Text, TimeSpan? Time, DateT
         {
             var o = new JsonObject { ["id"] = e.Id, ["text"] = e.Text };
             if (e.Time is { } t) o["time"] = t.ToString(@"hh\:mm");
+            if (e.Time is not null && e.End is { } end) o["end"] = end.ToString(@"hh\:mm");
             if (e.Date is { } d) o["date"] = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
             if (e.Weekly is { } w) o["weekly"] = w;
             return (JsonNode)o;
