@@ -40,8 +40,8 @@ public sealed class WidgetContext(PanelState panel, AppServices services, HostVi
 
     public void Toast(string text) => Host.ShowSnackbar(text);
 
-    /// <summary>Makes the panel this tall (it stays inside the screen).</summary>
-    public void Resize(double height) => Host.ResizePanel(Panel, height);
+    /// <summary>Makes the panel this tall, and this wide if given (it stays inside the screen).</summary>
+    public void Resize(double height, double? width = null) => Host.ResizePanel(Panel, height, width);
 }
 
 public static class WidgetRegistry
