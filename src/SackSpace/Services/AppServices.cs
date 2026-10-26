@@ -18,6 +18,7 @@ public sealed class AppServices
     public required MediaService Media { get; init; }
     public required ActivityGovernor Governor { get; init; }
     public required DesktopIconService Icons { get; init; }
+    public required TimerService Timers { get; init; }
     /// <summary>The first-run setup (used by "Empezar de cero").</summary>
     public required Func<Core.Model.AppConfig> CreateDefault { get; init; }
     public HostManager Hosts { get; set; } = null!;

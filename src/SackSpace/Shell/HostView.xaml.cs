@@ -194,6 +194,9 @@ public partial class HostView : UserControl
         else Manager.SetRaised(false);
     }
 
+    /// <summary>Behind a maximized window: draw nothing until it goes.</summary>
+    public void SetResting(bool resting) => Visibility = resting ? Visibility.Hidden : Visibility.Visible;
+
     public void SetBar(WorkspaceBar? bar)
     {
         if (ReferenceEquals(BarSlot.Content, bar)) return;
@@ -329,7 +332,7 @@ public partial class HostView : UserControl
         menu.Items.Add(Manager.IsEditing
             ? Ui.Item("Terminar de editar", Glyphs.Accept, () => Manager.SetEditing(false))
             : Ui.Item("Editar el diseño", Glyphs.Edit, () => Manager.SetEditing(true)));
-        if (p.Descriptor.Settings.Count > 0) menu.Items.Add(Ui.Item("Opciones del widget", Glyphs.Settings, () => OpenWidgetSettings(p)));
+        menu.Items.Add(Ui.Item("Opciones", Glyphs.Settings, () => OpenWidgetSettings(p)));
         menu.Items.Add(new Separator());
         for (var i = 0; i < Manager.Monitors.Count; i++)
         {

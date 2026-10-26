@@ -35,7 +35,7 @@ public sealed class SettingsWindow : Window
         ("acerca", Glyphs.Info, "Acerca de"),
     ];
 
-    private static readonly string[] Swatches =
+    public static readonly string[] Swatches =
         ["#7C9CFF", "#4FD1C5", "#FF5C8A", "#B48CFF", "#FFB454", "#5CD67A", "#FF7A59", "#4DB8FF", "#E879F9", "#A3A3A3"];
 
     private readonly AppServices _s;
@@ -246,7 +246,7 @@ public sealed class SettingsWindow : Window
         return b;
     }
 
-    private static Button Swatch(string hex, bool selected, double size, Action pick)
+    public static Button Swatch(string hex, bool selected, double size, Action pick)
     {
         var color = Argb.TryParse(hex, out var a) ? Color.FromArgb(a.A, a.R, a.G, a.B) : Colors.Gray;
         var dot = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = new SolidColorBrush(color) };
@@ -279,6 +279,10 @@ public sealed class SettingsWindow : Window
             Toggle(g.Animations, v => { g.Animations = v; Notify(ChangeKind.General); }));
         Card("Pausar con pantalla completa", "Relojes y medidores descansan mientras juegas o ves un vídeo a pantalla completa, y con la sesión bloqueada.",
             Toggle(g.PauseInFullscreen, v => { g.PauseInFullscreen = v; Notify(ChangeKind.General); }));
+        Card("Descansar detrás de ventanas maximizadas", "Una pantalla tapada por una ventana maximizada o a pantalla completa deja de dibujar sus paneles hasta que se despeje. Ahorra procesador; no cambia nada de lo que ves.",
+            Toggle(g.RestBehindWindows, v => { g.RestBehindWindows = v; Notify(ChangeKind.General); }));
+        Card("Bloquear el diseño", "Mantener pulsado un panel ya no lo pone en modo edición, para no moverlo sin querer. El lápiz de la barra y el atajo siguen funcionando.",
+            Toggle(g.LockLayout, v => { g.LockLayout = v; Notify(ChangeKind.General); }));
 
         Group("Cómo se usa");
         Card("Mover y cambiar el tamaño", "Mantén pulsado un panel, o usa el lápiz de la barra. Arrastra el panel para moverlo y la esquina para cambiar su tamaño; se alinean solos.", null);
@@ -501,6 +505,7 @@ public sealed class SettingsWindow : Window
             var middle = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
             middle.Children.Add(name);
             middle.Children.Add(colors);
+            middle.Children.Add(Automatic(ws));
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
             if (ws.Id == Config.ActiveWorkspace?.Id) actions.Children.Add(new TextBlock { Text = "En uso", FontSize = 12, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Ui.Brush("AccentBrush") });
@@ -556,6 +561,82 @@ public sealed class SettingsWindow : Window
         add.HorizontalAlignment = HorizontalAlignment.Left;
         add.Margin = new Thickness(0, 10, 0, 0);
         _page.Children.Add(add);
+    }
+
+    private static readonly (DayOfWeek Day, string Letter)[] Week =
+        [(DayOfWeek.Monday, "L"), (DayOfWeek.Tuesday, "M"), (DayOfWeek.Wednesday, "X"), (DayOfWeek.Thursday, "J"),
+         (DayOfWeek.Friday, "V"), (DayOfWeek.Saturday, "S"), (DayOfWeek.Sunday, "D")];
+
+    /// <summary>"Automático": hours and days, and programs, that bring this workspace up by itself.</summary>
+    private FrameworkElement Automatic(Workspace ws)
+    {
+        var box = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
+        box.Children.Add(Ui.Text("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Vacío, nunca.", size: 12, wrap: true));
+
+        var hours = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+        TextBox Time(string? value, string hint) =>
+            new() { Style = Ui.Style("FieldTextBox"), Text = value ?? "", Width = 70, MaxLength = 5, ToolTip = hint, VerticalAlignment = VerticalAlignment.Center };
+        var from = Time(ws.ScheduleFrom, "Desde, p. ej. 09:00");
+        var to = Time(ws.ScheduleTo, "Hasta, p. ej. 18:00");
+        var status = Ui.Text("", size: 12);
+        status.VerticalAlignment = VerticalAlignment.Center;
+        status.Margin = new Thickness(10, 0, 0, 0);
+        void SaveHours()
+        {
+            var a = from.Text.Trim();
+            var b = to.Text.Trim();
+            if (a.Length == 0 && b.Length == 0) { ws.ScheduleFrom = ws.ScheduleTo = null; status.Text = "sin horario"; }
+            else if (AutoSwitch.TryParseTime(a, out var ta) && AutoSwitch.TryParseTime(b, out var tb) && ta != tb)
+            {
+                ws.ScheduleFrom = ta.ToString(@"hh\:mm");
+                ws.ScheduleTo = tb.ToString(@"hh\:mm");
+                status.Text = ta > tb ? "pasa la medianoche" : "";
+            }
+            else { status.Text = "formato 09:00"; return; } // half typed: keep the last good hours
+            Notify(ChangeKind.WorkspaceList);
+        }
+        from.TextChanged += (_, _) => SaveHours();
+        to.TextChanged += (_, _) => SaveHours();
+        var fromLabel = WithMargin(Ui.Text("De", size: 13), 0, 0, 8, 0);
+        fromLabel.VerticalAlignment = VerticalAlignment.Center;
+        hours.Children.Add(fromLabel);
+        hours.Children.Add(from);
+        var and = WithMargin(Ui.Text("a", size: 13), 8, 0, 8, 0);
+        and.VerticalAlignment = VerticalAlignment.Center;
+        hours.Children.Add(and);
+        hours.Children.Add(to);
+
+        var days = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
+        foreach (var (day, letter) in Week)
+        {
+            var on = ws.ScheduleDays?.Contains(day) == true;
+            var chip = Ui.Pill(letter, () => { }, accent: on);
+            chip.MinWidth = 0;
+            chip.Padding = new Thickness(9, 4, 9, 4);
+            chip.Margin = new Thickness(0, 0, 4, 0);
+            chip.ToolTip = Ui.Capitalize(Ui.Culture.DateTimeFormat.GetDayName(day)) + " (sin ninguno marcado: todos los días)";
+            chip.Click += (_, _) =>
+            {
+                var list = ws.ScheduleDays ?? [];
+                if (!list.Remove(day)) list.Add(day);
+                ws.ScheduleDays = list.Count == 0 ? null : list;
+                chip.Style = Ui.Style(list.Contains(day) ? "AccentPillButton" : "PillButton");
+                Notify(ChangeKind.WorkspaceList);
+            };
+            days.Children.Add(chip);
+        }
+        hours.Children.Add(status);
+        box.Children.Add(hours);
+        box.Children.Add(days);
+
+        var apps = new TextBox { Style = Ui.Style("FieldTextBox"), Text = string.Join(", ", ws.Apps ?? []), Width = 320, Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+        apps.TextChanged += (_, _) =>
+        {
+            ws.Apps = AutoSwitch.ParseApps(apps.Text);
+            Notify(ChangeKind.WorkspaceList);
+        };
+        box.Children.Add(Ui.WithPlaceholder(apps, "Al usar estos programas: steam, discord…"));
+        return box;
     }
 
     private static T WithMargin<T>(T e, double l, double t, double r, double b) where T : FrameworkElement
@@ -655,7 +736,7 @@ public sealed class SettingsWindow : Window
         var path = new TextBox { Text = _s.DataFolder, IsReadOnly = true, Style = Ui.Style("GlassTextBox"), FontSize = 12.5, Margin = new Thickness(0, 8, 0, 0) };
         path.SetResourceReference(ForegroundProperty, "TextSecondaryBrush");
         Card("Todo se queda en este equipo",
-            "SackSpace no usa internet, no tiene cuentas y no envía estadísticas. Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
+            "SackSpace no tiene cuentas ni envía estadísticas. Solo el widget de Clima sale a internet, a Open-Meteo, con la ciudad que escribas. Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
             null, path);
 
         var tools = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };

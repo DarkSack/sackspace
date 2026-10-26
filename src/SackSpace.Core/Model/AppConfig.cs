@@ -37,6 +37,10 @@ public sealed class GeneralSettings
     public bool PauseInFullscreen { get; set; } = true;
     /// <summary>SackSpace draws the desktop icons (Windows' own are hidden) and each workspace shows its own.</summary>
     public bool DesktopIcons { get; set; }
+    /// <summary>Holding a panel does not start edit mode (the pencil and the shortcut still do).</summary>
+    public bool LockLayout { get; set; }
+    /// <summary>A screen covered by a maximized window stops drawing its panels (nobody sees them).</summary>
+    public bool RestBehindWindows { get; set; } = true;
 }
 
 public enum AccentMode
@@ -75,6 +79,12 @@ public sealed class Workspace
     public List<PanelState> Panels { get; set; } = new();
     /// <summary>Desktop icons shown here (paths, or "::{CLSID}" for Recycle Bin and the like); null = all of them.</summary>
     public List<string>? DesktopIcons { get; set; }
+    /// <summary>"HH:mm": between these hours (on ScheduleDays, or every day) this workspace comes up by itself.</summary>
+    public string? ScheduleFrom { get; set; }
+    public string? ScheduleTo { get; set; }
+    public List<DayOfWeek>? ScheduleDays { get; set; }
+    /// <summary>Program names (without .exe) that bring this workspace up when they take the focus.</summary>
+    public List<string>? Apps { get; set; }
 
     public static string NewId() => Guid.NewGuid().ToString("N")[..12];
 }
@@ -96,6 +106,11 @@ public sealed class PanelState
     public int Z { get; set; }
     /// <summary>The widget's own data (note text, tasks, shortcuts, options).</summary>
     public JsonObject Settings { get; set; } = new();
+    /// <summary>This panel's own glass colour ("#RRGGBB") and opacity; null = the theme's.</summary>
+    public string? Tint { get; set; }
+    public double? Opacity { get; set; }
+    /// <summary>Hides the widget's title row (icon and name).</summary>
+    public bool HideTitle { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public Rect Bounds

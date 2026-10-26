@@ -81,6 +81,7 @@ public partial class App : Application
             System = new SystemSampler(),
             Media = new MediaService(),
             Governor = new ActivityGovernor { PauseInFullscreen = config.General.PauseInFullscreen },
+            Timers = new TimerService(session),
             CreateDefault = CreateDefault,
         };
         AppServices.Current = _s = s;
@@ -92,6 +93,7 @@ public partial class App : Application
         s.ApplyTheme(false); // again, now that the wallpaper colour is known
 
         s.Governor.PausedChanged += paused => { s.Clock.Paused = paused; s.System.Paused = paused; };
+        s.Governor.WindowsMayHaveChanged += s.Hosts.UpdateResting;
         s.Wallpaper.Changed += () => { s.Hosts.OnWallpaperChanged(); s.ApplyTheme(true); };
         s.Session.Changed += OnConfigChanged;
         // A new or recovered config goes to disk right away, not at the first change.
@@ -109,6 +111,8 @@ public partial class App : Application
         RegisterHotkeys();
         if (config.General.StartWithWindows) Autostart.Apply(true); // keeps the path right after an update
         _tray = new TrayIcon(s, Quit);
+        s.Timers.Notify = _tray.Notify;
+        _ = new AutoSwitcher(s);
         ListenForSecondLaunch();
         SessionEnding += (_, _) => s.Session.Flush();
 
@@ -193,6 +197,7 @@ public partial class App : Application
             if (g.DesktopIcons != _lastGeneral.DesktopIcons) s.Icons.Enable(g.DesktopIcons);
             if (g.UseAllMonitors != _lastGeneral.UseAllMonitors) s.Hosts.Rebuild();
             else if (g.ShowWorkspaceBar != _lastGeneral.ShowWorkspaceBar) s.Hosts.UpdateBar();
+            if (g.RestBehindWindows != _lastGeneral.RestBehindWindows) s.Hosts.UpdateResting();
             _lastGeneral = Copy(g);
         }
         if (kind.HasFlag(ChangeKind.Workspace) || kind.HasFlag(ChangeKind.Layout)) s.Hosts.ReloadAll();
@@ -208,6 +213,8 @@ public partial class App : Application
         Animations = g.Animations,
         PauseInFullscreen = g.PauseInFullscreen,
         DesktopIcons = g.DesktopIcons,
+        LockLayout = g.LockLayout,
+        RestBehindWindows = g.RestBehindWindows,
     };
 
     private void RegisterHotkeys()
@@ -294,6 +301,33 @@ public partial class App : Application
                 await Task.Delay(800);
                 SaveViews(dir, $"{n + 1}-iconos");
             }
+            if (hosts.PrimaryView is { } view && view.Panels.FirstOrDefault() is { } panel)
+            {
+                view.OpenWidgetSettings(panel);
+                await Task.Delay(400);
+                SaveViews(dir, $"{n + 2}-opciones");
+            }
+            // The settings pages, drawn without opening the window (dark background: Mica only exists on screen).
+            var settings = new Settings.SettingsWindow(_s);
+            foreach (var page in new[] { "general", "espacios" })
+            {
+                settings.ShowPage(page);
+                var root = (FrameworkElement)settings.Content;
+                var size = new Size(1000, 1500);
+                root.Measure(size);
+                root.Arrange(new Rect(size));
+                root.UpdateLayout();
+                var bmp = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+                var bg = new DrawingVisual();
+                using (var dc = bg.RenderOpen()) dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(24, 26, 34)), null, new Rect(size));
+                bmp.Render(bg);
+                bmp.Render(root);
+                var png = new PngBitmapEncoder();
+                png.Frames.Add(BitmapFrame.Create(bmp));
+                using var file = File.Create(Path.Combine(dir, $"ajustes-{page}.png"));
+                png.Save(file);
+            }
+            settings.Close();
             Log.Info("Capturas guardadas en " + dir);
         }
         catch (Exception ex)

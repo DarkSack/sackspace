@@ -176,6 +176,8 @@ public sealed class WidgetSettingsSheet : SheetBase
                     break;
             }
         }
+        AddLook(panel);
+
         var done = Ui.Pill("Listo", host.CloseSheet, accent: true);
         done.HorizontalAlignment = HorizontalAlignment.Right;
         done.Margin = new Thickness(0, 8, 0, 0);
@@ -183,6 +185,60 @@ public sealed class WidgetSettingsSheet : SheetBase
     }
 
     private static TextBlock Label(string text) => new() { Text = text, FontSize = 13, Margin = new Thickness(0, 4, 0, 8) };
+
+    /// <summary>The panel's own glass: colour, opacity and its title row.</summary>
+    private void AddLook(PanelHost panel)
+    {
+        var p = panel.Panel;
+        if (panel.Descriptor.Settings.Count > 0) Body.Children.Add(Section("Panel"));
+
+        Body.Children.Add(Label("Color del cristal"));
+        var colors = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
+        void Colors()
+        {
+            colors.Children.Clear();
+            var auto = Ui.Pill("Del tema", () => { p.Tint = null; Changed(); Colors(); }, accent: p.Tint is null);
+            auto.Margin = new Thickness(0, 0, 8, 6);
+            colors.Children.Add(auto);
+            foreach (var hex in Settings.SettingsWindow.Swatches.Prepend("#FFFFFF").Prepend("#000000"))
+                colors.Children.Add(Settings.SettingsWindow.Swatch(hex, hex.Equals(p.Tint, StringComparison.OrdinalIgnoreCase), 20,
+                    () => { p.Tint = hex; Changed(); Colors(); }));
+        }
+        Colors();
+        Body.Children.Add(colors);
+
+        var theme = Host.Services.Theme.Current.GlassOpacity;
+        string Shown(double? v) => v is { } o ? $"Opacidad: {o * 100:0} %" : $"Opacidad: la del tema ({theme * 100:0} %)";
+        var label = Label(Shown(p.Opacity));
+        Body.Children.Add(label);
+        var slider = new Slider
+        {
+            Style = Ui.Style("AccentSlider"), Minimum = 0, Maximum = 1, Value = p.Opacity ?? theme,
+            SmallChange = 0.05, LargeChange = 0.1, IsSnapToTickEnabled = true, TickFrequency = 0.05, Margin = new Thickness(0, 0, 0, 12),
+        };
+        slider.ValueChanged += (_, e) =>
+        {
+            p.Opacity = Math.Round(e.NewValue, 2);
+            label.Text = Shown(p.Opacity);
+            Changed();
+        };
+        Body.Children.Add(slider);
+
+        var title = new CheckBox { Content = "Mostrar el título", Style = Ui.Style("ToggleSwitch"), IsChecked = !p.HideTitle, Margin = new Thickness(0, 6, 0, 10), FontSize = 14 };
+        title.Click += (_, _) =>
+        {
+            p.HideTitle = title.IsChecked != true;
+            Host.Services.Session.MarkDirty();
+            panel.CreateWidget();
+        };
+        if (panel.HasTitle) Body.Children.Add(title);
+
+        void Changed()
+        {
+            Host.Services.Session.MarkDirty();
+            panel.ApplyTint();
+        }
+    }
 
     private void Set(string key, JsonNode? value)
     {

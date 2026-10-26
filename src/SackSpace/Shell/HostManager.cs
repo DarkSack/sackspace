@@ -20,6 +20,7 @@ public sealed class HostManager
     private readonly DispatcherTimer _displayDebounce = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private SettingsWindow? _settings;
     private bool _show = true;
+    private HashSet<string> _resting = [];
 
     /// <summary>Monitors that have a host, primary first.</summary>
     public IReadOnlyList<MonitorInfo> Monitors { get; private set; } = [];
@@ -79,6 +80,7 @@ public sealed class HostManager
     public void CloseAll()
     {
         IsRaised = IsEditing = false;
+        _resting = []; // new views start visible
         foreach (var h in _hosts)
         {
             h.View.DisposeAll();
@@ -125,6 +127,20 @@ public sealed class HostManager
         foreach (var v in Views) v.ReloadIcons();
     }
 
+    /// <summary>
+    /// A screen hidden behind a maximized or full-screen window stops drawing its panels
+    /// (a transparent window is redrawn in software on every change, seen or not).
+    /// Raised panels always show.
+    /// </summary>
+    public void UpdateResting()
+    {
+        var covered = Config.General.RestBehindWindows && !IsRaised ? CoveringWindows.Monitors(Monitors) : [];
+        if (covered.SetEquals(_resting)) return;
+        _resting = covered;
+        foreach (var v in Views) v.SetResting(covered.Contains(v.Monitor.Key));
+        Log.Info($"Pantallas en reposo: {covered.Count} de {Monitors.Count}");
+    }
+
     // ── Bar ──────────────────────────────────────────────────
 
     /// <summary>The workspace bar lives on the primary monitor, if the user wants it.</summary>
@@ -162,6 +178,7 @@ public sealed class HostManager
             if (raiseChanged) h.SetRaised(raised);
             h.View.SetMode(raised, editing);
         }
+        if (raiseChanged) UpdateResting();
         if (raised && raiseChanged) HostUnderMouse()?.FocusHost();
         StateChanged?.Invoke();
     }

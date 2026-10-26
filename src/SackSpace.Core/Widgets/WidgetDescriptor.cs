@@ -41,6 +41,10 @@ public static class BuiltInWidgets
     public const string SystemMonitor = "system";
     public const string Media = "media";
     public const string Shortcuts = "shortcuts";
+    public const string Disks = "disks";
+    public const string Network = "network";
+    public const string Weather = "weather";
+    public const string Timer = "timer";
 
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
@@ -64,9 +68,10 @@ public static class BuiltInWidgets
             new("title", "Título", WidgetSettingKind.Text, "Tareas"),
             new("hideDone", "Ocultar las completadas", WidgetSettingKind.Toggle, "false"),
         ]),
-        new(SystemMonitor, "Monitor del sistema", "Uso de procesador y memoria en tiempo real.", Glyphs.Gauge, 360, 220, 220, 150,
+        new(SystemMonitor, "Monitor del sistema", "Uso de procesador, memoria y gráfica en tiempo real.", Glyphs.Gauge, 360, 220, 220, 150,
         [
             new("interval", "Actualizar cada", WidgetSettingKind.Choice, "2 s", ["1 s", "2 s", "5 s"]),
+            new("gpu", "Mostrar la tarjeta gráfica", WidgetSettingKind.Toggle, "false"),
         ]),
         new(Media, "Reproductor", "Lo que suena en Spotify, el navegador o cualquier app, con sus controles.", Glyphs.Music, 360, 150, 260, 120,
         []),
@@ -75,6 +80,26 @@ public static class BuiltInWidgets
             new("title", "Título", WidgetSettingKind.Text, "Accesos"),
             new("iconSize", "Tamaño de los iconos", WidgetSettingKind.Choice, "Mediano", ["Pequeño", "Mediano", "Grande"]),
             new("labels", "Mostrar nombres", WidgetSettingKind.Toggle, "true"),
+        ]),
+        new(Disks, "Discos", "Espacio libre en cada unidad.", Glyphs.Drive, 320, 180, 220, 110,
+        [
+            new("removable", "Incluir memorias USB", WidgetSettingKind.Toggle, "true"),
+        ]),
+        new(Network, "Red", "Velocidad de bajada y subida en tiempo real.", Glyphs.Network, 360, 160, 220, 120,
+        [
+            new("interval", "Actualizar cada", WidgetSettingKind.Choice, "2 s", ["1 s", "2 s", "5 s"]),
+        ]),
+        new(Weather, "Clima", "El tiempo de ahora y de los próximos días (Open-Meteo, sin cuenta). El único widget que usa internet.", Glyphs.Weather, 340, 200, 220, 120,
+        [
+            new("city", "Ciudad", WidgetSettingKind.Text, ""),
+            new("days", "Mostrar los próximos días", WidgetSettingKind.Toggle, "true"),
+        ]),
+        new(Timer, "Temporizador", "Cuenta atrás, Pomodoro o cronómetro, con aviso al terminar.", Glyphs.Timer, 300, 190, 220, 150,
+        [
+            new("mode", "Modo", WidgetSettingKind.Choice, "Temporizador", ["Temporizador", "Pomodoro", "Cronómetro"]),
+            new("minutes", "Minutos del temporizador", WidgetSettingKind.Number, "10", Min: 1, Max: 180),
+            new("work", "Minutos de trabajo (Pomodoro)", WidgetSettingKind.Number, "25", Min: 5, Max: 90, Step: 5),
+            new("break", "Minutos de descanso (Pomodoro)", WidgetSettingKind.Number, "5", Min: 1, Max: 30),
         ]),
     ];
 
@@ -91,6 +116,7 @@ public static class PanelSettings
 
     public static double GetDouble(this JsonObject s, string key, double fallback) =>
         s[key] is JsonValue v && v.TryGetValue<double>(out var d) ? d
+        : s[key] is JsonValue n && n.TryGetValue<int>(out var i) ? i // set in code as an int, not yet saved
         : s[key] is JsonValue t && t.TryGetValue<string>(out var str) && double.TryParse(str, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed
         : fallback;
 

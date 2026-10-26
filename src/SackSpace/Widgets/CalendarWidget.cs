@@ -37,6 +37,7 @@ public sealed class CalendarWidget : Grid, IDisposable
             Ui.IconButton(Glyphs.ChevronLeft, "Mes anterior", () => Go(_month.AddMonths(-1)), 28),
             Ui.IconButton(Glyphs.ChevronRight, "Mes siguiente", () => Go(_month.AddMonths(1)), 28));
         header.Children.RemoveAt(header.Children.Count - 1);
+        header.Tag = null; // month navigation, not a title
         header.Children.Add(_title);
         header.Margin = new Thickness(0, 0, 0, 4);
         Children.Add(header);

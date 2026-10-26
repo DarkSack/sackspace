@@ -15,7 +15,7 @@
                 <ImageBrush x:Name="GlassBrush" ViewboxUnits="Absolute" Stretch="Fill" />
             </Border.Background>
         </Border>
-        <Border CornerRadius="{DynamicResource PanelCornerRadius}" Background="{DynamicResource GlassTintBrush}" />
+        <Border x:Name="Tint" CornerRadius="{DynamicResource PanelCornerRadius}" Background="{DynamicResource GlassTintBrush}" />
         <Border CornerRadius="{DynamicResource PanelCornerRadius}" Background="{DynamicResource GlassHighlightBrush}" IsHitTestVisible="False" />
 
         <ContentControl x:Name="Body" Margin="18,16" Focusable="False" />
@@ -34,7 +34,7 @@
             </Thumb>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0">
                 <Button x:Name="SettingsButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"
-                        Content="&#xE713;" ToolTip="Opciones del widget" Margin="0,0,6,0" />
+                        Content="&#xE713;" ToolTip="Opciones" Margin="0,0,6,0" />
                 <Button x:Name="HideButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"
                         Content="&#xED1A;" ToolTip="Ocultar" Margin="0,0,6,0" />
                 <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Background="{DynamicResource SurfaceBrush}"

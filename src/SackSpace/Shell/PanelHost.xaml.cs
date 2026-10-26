@@ -2,9 +2,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using SackSpace.Core;
 using SackSpace.Core.Model;
+using SackSpace.Core.Themes;
 using SackSpace.Core.Widgets;
 using SackSpace.Widgets;
 using Rect = SackSpace.Core.Rect;
@@ -29,6 +31,8 @@ public partial class PanelHost : UserControl
     public PanelState Panel { get; }
     public WidgetDescriptor Descriptor { get; }
     public Rect Bounds { get; private set; }
+    /// <summary>The widget has a title row that the panel options can hide.</summary>
+    public bool HasTitle { get; private set; }
 
     public PanelHost(PanelState panel, WidgetDescriptor descriptor, HostView host)
     {
@@ -36,7 +40,6 @@ public partial class PanelHost : UserControl
         Panel = panel;
         Descriptor = descriptor;
         _host = host;
-        SettingsButton.Visibility = descriptor.Settings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         MoveThumb.DragStarted += (_, _) => BeginDrag();
         MoveThumb.DragDelta += (_, _) => DragMove();
@@ -75,6 +78,9 @@ public partial class PanelHost : UserControl
             _widget = Ui.Text("Este widget no se pudo cargar.", wrap: true);
         }
         Body.Content = _widget;
+        var headers = (_widget as Panel)?.Children.OfType<FrameworkElement>().Where(e => Equals(e.Tag, Ui.HeaderTag)).ToList() ?? [];
+        HasTitle = headers.Count > 0;
+        if (Panel.HideTitle) foreach (var header in headers) header.Visibility = Visibility.Collapsed;
     }
 
     public void DisposeWidget()
@@ -103,6 +109,22 @@ public partial class PanelHost : UserControl
         GlassBrush.ImageSource = clear ? null : _host.WallpaperImage;
         var vb = _host.GlassViewbox(Bounds);
         if (!vb.IsEmpty) GlassBrush.Viewbox = vb;
+        ApplyTint();
+    }
+
+    /// <summary>The panel's own colour and opacity, or the theme's.</summary>
+    public void ApplyTint()
+    {
+        if (Panel.Tint is null && Panel.Opacity is null)
+        {
+            Tint.SetResourceReference(BackgroundProperty, "GlassTintBrush");
+            return;
+        }
+        var theme = _host.Services.Theme.Current;
+        var c = Panel.Tint is not null && Argb.TryParse(Panel.Tint, out var own) ? own : theme.GlassTint;
+        var brush = new SolidColorBrush(Color.FromArgb((byte)Math.Round(Math.Clamp(Panel.Opacity ?? theme.GlassOpacity, 0, 1) * 255), c.R, c.G, c.B));
+        brush.Freeze();
+        Tint.Background = brush;
     }
 
     public void SetEditing(bool editing)
@@ -116,7 +138,7 @@ public partial class PanelHost : UserControl
 
     private void OnPress(object sender, MouseButtonEventArgs e)
     {
-        if (_host.Manager.IsEditing || e.ClickCount > 1) return;
+        if (_host.Manager.IsEditing || e.ClickCount > 1 || _host.Services.Session.Config.General.LockLayout) return;
         _pressAt = e.GetPosition(this);
         _longPress.Start();
         Anim.ScaleTo(this, 0.985, 400);

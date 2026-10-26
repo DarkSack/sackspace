@@ -451,3 +451,92 @@ public class DesktopIconListTests
         Assert.False(DesktopIconLists.Shows(work, "d/Postman.lnk"));
     }
 }
+
+public class AutoSwitchTests
+{
+    [Fact]
+    public void Schedules_cover_working_hours_overnight_slots_and_chosen_days()
+    {
+        var work = new Workspace { Name = "Trabajo", ScheduleFrom = "9:00", ScheduleTo = "18:00", ScheduleDays = [DayOfWeek.Monday, DayOfWeek.Friday] };
+        var night = new Workspace { Name = "Gaming", ScheduleFrom = "22:00", ScheduleTo = "02:00", ScheduleDays = [DayOfWeek.Friday] };
+        var monday = new DateTime(2026, 10, 26); // a Monday
+
+        Assert.True(AutoSwitch.InSchedule(work, monday.AddHours(9)));
+        Assert.False(AutoSwitch.InSchedule(work, monday.AddHours(18))); // the end is not included
+        Assert.False(AutoSwitch.InSchedule(work, monday.AddDays(1).AddHours(10))); // Tuesday is not chosen
+
+        var friday = monday.AddDays(4);
+        Assert.True(AutoSwitch.InSchedule(night, friday.AddHours(23)));
+        Assert.True(AutoSwitch.InSchedule(night, friday.AddDays(1).AddHours(1))); // Saturday 01:00 still belongs to Friday
+        Assert.False(AutoSwitch.InSchedule(night, friday.AddHours(1)));          // Friday 01:00 belongs to Thursday
+        Assert.Same(night, AutoSwitch.Scheduled([work, night], friday.AddHours(23)));
+
+        Assert.False(AutoSwitch.InSchedule(new Workspace { ScheduleFrom = "25:00", ScheduleTo = "10:00" }, monday.AddHours(9)));
+        Assert.False(AutoSwitch.InSchedule(new Workspace(), monday));
+    }
+
+    [Fact]
+    public void Apps_match_by_program_name_whatever_was_typed()
+    {
+        Assert.Equal(["steam", "discord"], AutoSwitch.ParseApps(" Steam.exe, discord ; steam\n"));
+        Assert.Null(AutoSwitch.ParseApps(" , "));
+        var gaming = new Workspace { Apps = ["steam"] };
+        Assert.Same(gaming, AutoSwitch.ForApp([new Workspace(), gaming], @"C:\Program Files\Steam\STEAM.EXE"));
+        Assert.Null(AutoSwitch.ForApp([gaming], "code"));
+        Assert.Null(AutoSwitch.ForApp([gaming], ""));
+    }
+}
+
+public class TimerLogicTests
+{
+    private static readonly DateTime T0 = new(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void A_countdown_runs_pauses_resumes_and_finishes()
+    {
+        var s = new JsonObject { ["minutes"] = 10 };
+        Assert.Equal(TimeSpan.FromMinutes(10), TimerLogic.Shown(s, T0));
+        TimerLogic.Start(s, T0);
+        Assert.True(TimerLogic.IsRunning(s));
+        Assert.Equal(T0.AddMinutes(10), TimerLogic.EndsAt(s));
+
+        TimerLogic.Pause(s, T0.AddMinutes(4));
+        Assert.False(TimerLogic.IsRunning(s));
+        Assert.Equal(TimeSpan.FromMinutes(6), TimerLogic.Shown(s, T0.AddHours(1))); // paused: time stands still
+
+        TimerLogic.Start(s, T0.AddMinutes(30));
+        Assert.Equal(T0.AddMinutes(36), TimerLogic.EndsAt(s));
+        Assert.Equal(TimeSpan.Zero, TimerLogic.Shown(s, T0.AddMinutes(40)));
+        Assert.Equal("Se acabó el tiempo.", TimerLogic.Finish(s));
+        Assert.False(TimerLogic.IsRunning(s));
+        Assert.Equal(TimeSpan.FromMinutes(10), TimerLogic.Shown(s, T0));
+    }
+
+    [Fact]
+    public void Pomodoro_alternates_work_and_breaks_and_counts_rounds()
+    {
+        var s = new JsonObject { ["mode"] = TimerLogic.Pomodoro, ["work"] = 25, ["break"] = 5 };
+        Assert.Equal(TimeSpan.FromMinutes(25), TimerLogic.Length(s));
+        TimerLogic.Start(s, T0);
+        Assert.Contains("descansar 5 min", TimerLogic.Finish(s));
+        Assert.True(TimerLogic.OnBreak(s));
+        Assert.Equal(1, TimerLogic.Rounds(s));
+        Assert.Equal(TimeSpan.FromMinutes(5), TimerLogic.Shown(s, T0));
+        TimerLogic.Finish(s);
+        Assert.False(TimerLogic.OnBreak(s));
+        Assert.Equal(1, TimerLogic.Rounds(s));
+    }
+
+    [Fact]
+    public void The_stopwatch_adds_up_across_pauses()
+    {
+        var s = new JsonObject { ["mode"] = TimerLogic.Stopwatch };
+        TimerLogic.Start(s, T0);
+        Assert.Null(TimerLogic.EndsAt(s)); // never "finishes"
+        TimerLogic.Pause(s, T0.AddSeconds(90));
+        TimerLogic.Start(s, T0.AddHours(1));
+        Assert.Equal(TimeSpan.FromSeconds(100), TimerLogic.Shown(s, T0.AddHours(1).AddSeconds(10)));
+        Assert.Equal("01:40", TimerLogic.Format(TimeSpan.FromSeconds(100)));
+        Assert.Equal("1:00:05", TimerLogic.Format(TimeSpan.FromSeconds(3605)));
+    }
+}

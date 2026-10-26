@@ -65,5 +65,9 @@ public static class WidgetRegistry
         Register(new WidgetFactory(D(BuiltInWidgets.SystemMonitor), c => new SystemMonitorWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Media), c => new MediaWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Shortcuts), c => new ShortcutsWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Disks), c => new DisksWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Network), c => new NetworkWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Weather), c => new WeatherWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Timer), c => new TimerWidget(c)));
     }
 }

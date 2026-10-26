@@ -69,6 +69,9 @@ public sealed class TrayIcon : IDisposable
         menu.IsOpen = true;
     }
 
+    /// <summary>A Windows notification (it lands in the notification centre too).</summary>
+    public void Notify(string title, string text) => _icon.ShowBalloonTip(8000, title, text, Forms.ToolTipIcon.Info);
+
     public void Dispose()
     {
         _s.Hosts.StateChanged -= UpdateText;

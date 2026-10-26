@@ -71,10 +71,13 @@ public static class Ui
 
     public static Brush Brush(string key) => (Brush)Application.Current.FindResource(key);
 
+    /// <summary>Marks a widget's title row (PanelState.HideTitle hides it).</summary>
+    public const string HeaderTag = "header";
+
     /// <summary>A header row: glyph, title and anything on the right.</summary>
     public static DockPanel Header(string glyph, string title, params UIElement[] right)
     {
-        var dock = new DockPanel { Margin = new Thickness(0, 0, 0, 10), LastChildFill = true };
+        var dock = new DockPanel { Margin = new Thickness(0, 0, 0, 10), LastChildFill = true, Tag = HeaderTag };
         foreach (var r in right.Reverse())
         {
             DockPanel.SetDock(r, Dock.Right);

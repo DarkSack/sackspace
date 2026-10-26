@@ -3,15 +3,17 @@
 Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difuminado, bordes redondeados, animaciones suaves, al estilo Android) que viven sobre el fondo de pantalla, con un espacio para cada momento: **Personal, Trabajo, Gaming y Desarrollo**, o los que quieras.
 
 - **Espacios**: cada uno con sus propios paneles, accesos, notas, colores y distribución. Se cambia con las pestañas de arriba, la rueda del ratón sobre ellas, los atajos o el icono de la bandeja.
-- **Widgets**: reloj, calendario, notas, tareas, monitor de CPU y RAM, reproductor (lo que suene en Spotify, el navegador o cualquier app) y grupos de accesos (apps del menú Inicio, archivos y carpetas; se arrastran desde el Explorador).
+- **Widgets**: reloj, calendario, notas, tareas, monitor de CPU, RAM y gráfica, red (bajada y subida), discos, clima, temporizador (cuenta atrás, Pomodoro y cronómetro, con aviso de Windows aunque estés en otro espacio), reproductor (lo que suene en Spotify, el navegador o cualquier app) y grupos de accesos (apps del menú Inicio, archivos y carpetas; se arrastran desde el Explorador).
+- **Espacios automáticos** (Ajustes › Espacios): cada espacio puede abrirse solo en un horario (p. ej. Trabajo de 09:00 a 18:00, de lunes a viernes) o al usar ciertos programas (Gaming con `steam`). Solo cambia al empezar el horario o al pasar a esa app, así que si cambias a mano se respeta.
+- **Cada panel a tu gusto**: su propio color de cristal, opacidad y, si quieres, sin título (engranaje del panel en modo edición o clic derecho › Opciones).
 - **Diseño libre**: mantén pulsado un panel (o el lápiz de la barra) para moverlo, cambiarle el tamaño, ocultarlo o quitarlo; se alinea solo a los bordes y a una rejilla. «Ordenar» los coloca sin encimarse.
 - **Varios monitores**: cada pantalla tiene sus paneles; un panel se manda a otra pantalla con el clic derecho.
 - **Temas**: cinco incluidos y los tuyos en JSON ([docs/TEMAS.md](docs/TEMAS.md)). Acento por espacio, tomado del fondo de pantalla, del tema o a tu gusto; opacidad, desenfoque y esquinas ajustables.
 - **Iconos del escritorio por espacio** (Ajustes › General): cada espacio muestra solo los iconos que elijas, con el clic derecho sobre un icono o con el lápiz › Iconos. SackSpace oculta los de Windows mientras está abierto y los dibuja él; al salir vuelven. No mueve ni cambia ningún archivo.
 - **Fondos animados**: con Wallpaper Engine o Lively, el cristal toma el fondo de cada pantalla (su vista previa). También puede usar una imagen propia, o ser transparente y dejar ver el fondo en movimiento.
 - **Se guarda solo**: cada cambio se escribe al momento (con copia del anterior). Exportar e importar una copia desde Ajustes.
-- **Privado**: no usa internet, no tiene cuentas ni estadísticas. Todo queda en `%LOCALAPPDATA%\SackSpace`.
-- **Ligero**: 0 % de CPU en reposo y unos 80 MB de memoria; relojes y medidores se pausan con juegos o vídeos a pantalla completa y con la sesión bloqueada.
+- **Privado**: sin cuentas ni estadísticas. Solo el widget de Clima sale a internet (a Open-Meteo, con la ciudad que escribas). Todo queda en `%LOCALAPPDATA%\SackSpace`.
+- **Ligero**: 0 % de CPU en reposo y unos 80 MB de memoria; relojes y medidores se pausan con juegos o vídeos a pantalla completa y con la sesión bloqueada, y una pantalla tapada por una ventana maximizada deja de dibujarse. «Bloquear el diseño» (Ajustes › General) evita mover paneles sin querer.
 
 ## Uso
 

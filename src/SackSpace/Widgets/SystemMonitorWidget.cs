@@ -7,11 +7,12 @@ using SackSpace.Shell;
 
 namespace SackSpace.Widgets;
 
-/// <summary>CPU and memory: the number now and a one-minute graph. Samples only while shown.</summary>
+/// <summary>CPU, memory and (optionally) GPU: the number now and a one-minute graph. Samples only while shown.</summary>
 public sealed class SystemMonitorWidget : Grid, IDisposable
 {
     private readonly WidgetContext _c;
     private readonly Meter _cpu, _ram;
+    private readonly Meter? _gpu;
 
     public SystemMonitorWidget(WidgetContext c)
     {
@@ -19,16 +20,11 @@ public sealed class SystemMonitorWidget : Grid, IDisposable
         var sampler = c.Services.System;
         _cpu = new Meter("Procesador", () => sampler.CpuHistory);
         _ram = new Meter("Memoria", () => sampler.RamHistory);
-        RowDefinitions.Add(new RowDefinition());
-        RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
-        RowDefinitions.Add(new RowDefinition());
-        Children.Add(_cpu);
-        SetRow(_ram, 2);
-        Children.Add(_ram);
+        if (c.Settings.GetBool("gpu", false)) _gpu = new Meter("Gráfica", () => sampler.GpuHistory);
+        Meter.Stack(this, _gpu is null ? [_cpu, _ram] : [_cpu, _ram, _gpu]);
 
-        var seconds = c.Settings.GetString("interval", "2 s") switch { "1 s" => 1, "5 s" => 5, _ => 2 };
         sampler.Sampled += Show;
-        sampler.Subscribe(this, TimeSpan.FromSeconds(seconds));
+        sampler.Subscribe(this, Meter.Interval(c), _gpu is null ? SampleKinds.Basic : SampleKinds.Gpu);
         if (sampler.Last is { } last) Show(last);
     }
 
@@ -37,6 +33,7 @@ public sealed class SystemMonitorWidget : Grid, IDisposable
         _cpu.Set($"{s.Cpu * 100:0} %", "");
         const double gb = 1024d * 1024 * 1024;
         _ram.Set($"{s.Ram * 100:0} %", string.Format(Ui.Culture, "{0:0.0} de {1:0} GB", s.UsedBytes / gb, s.TotalBytes / gb));
+        _gpu?.Set(s.Gpu is { } g ? $"{g * 100:0} %" : "—", "");
     }
 
     public void Dispose()
@@ -45,35 +42,53 @@ public sealed class SystemMonitorWidget : Grid, IDisposable
         _c.Services.System.Unsubscribe(this);
     }
 
-    private sealed class Meter : Grid
+}
+
+/// <summary>A labelled number with its graph on the right; the system and network widgets stack these.</summary>
+public sealed class Meter : Grid
+{
+    private readonly TextBlock _value = new() { FontSize = 26, FontWeight = FontWeights.SemiBold };
+    private readonly TextBlock _detail = new() { Style = Ui.Style("Caption"), FontSize = 11 };
+    private readonly Sparkline _graph;
+
+    /// <summary>Rows of meters with a small gap between them.</summary>
+    public static void Stack(Grid grid, IReadOnlyList<Meter> meters)
     {
-        private readonly TextBlock _value = new() { FontSize = 26, FontWeight = FontWeights.SemiBold };
-        private readonly TextBlock _detail = new() { Style = Ui.Style("Caption"), FontSize = 11 };
-        private readonly Sparkline _graph;
-
-        public Meter(string name, Func<IReadOnlyList<double>> values)
+        for (var i = 0; i < meters.Count; i++)
         {
-            _graph = new Sparkline(values) { Margin = new Thickness(14, 4, 0, 4) };
-            _value.SetResourceReference(TextBlock.FontFamilyProperty, "DisplayFont");
-            _value.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
-            ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
-            ColumnDefinitions.Add(new ColumnDefinition());
-            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            text.Children.Add(Ui.Text(name));
-            text.Children.Add(_value);
-            text.Children.Add(_detail);
-            Children.Add(text);
-            SetColumn(_graph, 1);
-            Children.Add(_graph);
+            if (i > 0) grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(meters.Count > 2 ? 8 : 14) });
+            grid.RowDefinitions.Add(new RowDefinition());
+            SetRow(meters[i], grid.RowDefinitions.Count - 1);
+            grid.Children.Add(meters[i]);
         }
+    }
 
-        public void Set(string value, string detail)
-        {
-            _value.Text = value;
-            _detail.Text = detail;
-            _detail.Visibility = detail.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-            _graph.InvalidateVisual();
-        }
+    /// <summary>The widget's "Actualizar cada" option.</summary>
+    public static TimeSpan Interval(WidgetContext c) =>
+        TimeSpan.FromSeconds(c.Settings.GetString("interval", "2 s") switch { "1 s" => 1, "5 s" => 5, _ => 2 });
+
+    public Meter(string name, Func<IReadOnlyList<double>> values)
+    {
+        _graph = new Sparkline(values) { Margin = new Thickness(14, 4, 0, 4) };
+        _value.SetResourceReference(TextBlock.FontFamilyProperty, "DisplayFont");
+        _value.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+        ColumnDefinitions.Add(new ColumnDefinition());
+        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        text.Children.Add(Ui.Text(name));
+        text.Children.Add(_value);
+        text.Children.Add(_detail);
+        Children.Add(text);
+        SetColumn(_graph, 1);
+        Children.Add(_graph);
+    }
+
+    public void Set(string value, string detail)
+    {
+        _value.Text = value;
+        _detail.Text = detail;
+        _detail.Visibility = detail.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        _graph.InvalidateVisual();
     }
 }
 

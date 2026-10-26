@@ -30,17 +30,21 @@ public sealed class WallpaperService
     private string? _customImage;
     // Wallpaper Engine's config.json and Lively's data folder, when those apps run; and a fingerprint of both.
     private (string? Engine, string? Lively, string Stamp) _live = (null, null, "");
+    // Windows sends several "desktop changed" notices for one change (and a display change brings more):
+    // one repaint after the last of them instead of one per notice.
+    private readonly DispatcherTimer _settle = new() { Interval = TimeSpan.FromMilliseconds(400) };
 
     /// <summary>The wallpaper or the blur changed: panels must repaint their glass.</summary>
     public event Action? Changed;
 
     public WallpaperService()
     {
+        _settle.Tick += (_, _) => { _settle.Stop(); Invalidate(); };
         SystemEvents.UserPreferenceChanged += (_, e) =>
         {
             // The new picture is written a moment after the notification.
             if (e.Category == UserPreferenceCategory.Desktop)
-                Application.Current?.Dispatcher.BeginInvoke(async () => { await Task.Delay(400); Invalidate(); });
+                Application.Current?.Dispatcher.BeginInvoke(() => { _settle.Stop(); _settle.Start(); });
         };
         // Neither app tells Windows when its wallpaper changes, so look every few seconds (a few file stamps).
         _live = FindLive();

@@ -75,9 +75,17 @@ Si la vista se suscribe a servicios (reloj, muestreador, multimedia), implementa
 ### Servicios compartidos
 
 - **`ClockTicker`**: un solo temporizador alineado al reloj. Late cada minuto si nadie muestra segundos.
-- **`SystemSampler`**: `GetSystemTimes` y `GlobalMemoryStatusEx`. Solo corre con suscriptores, al intervalo más corto que pidan.
+- **`SystemSampler`**: `GetSystemTimes` y `GlobalMemoryStatusEx`; red (`NetworkInterface`) y gráfica (contador PDH `GPU Engine(*engtype_3D)`, como el «3D» del Administrador de tareas) solo si un widget los pide (`SampleKinds`). Solo corre con suscriptores, al intervalo más corto que pidan.
+- **`TimerService`**: termina las cuentas atrás del widget Temporizador aunque su espacio no se vea. El estado vive en los `Settings` del panel (`TimerLogic`, con pruebas), así sigue tras cambiar de espacio o reiniciar. Un solo temporizador apuntado al final más cercano (como mucho 30 s, por si el PC se suspende) y un aviso de Windows desde el icono de la bandeja.
+- **`WeatherService`** (en `WeatherWidget.cs`): Open-Meteo, sin clave. Busca la ciudad y pide el pronóstico; los paneles con la misma ciudad comparten el informe media hora. Lo único de la app que sale a internet.
 - **`MediaService`**: los controles multimedia de Windows (SMTC), por eventos.
-- **`ActivityGovernor`**: pausa todo lo anterior con pantalla completa (`SHQueryUserNotificationState`) o con la sesión bloqueada.
+- **`ActivityGovernor`**: pausa todo lo anterior con pantalla completa (`SHQueryUserNotificationState`) o con la sesión bloqueada. También engancha `EVENT_SYSTEM_FOREGROUND` y `EVENT_SYSTEM_MINIMIZEEND` (`SetWinEventHook` fuera de proceso: no inyecta nada) y avisa cada 4 s, para:
+  - **`AutoSwitcher`**: el espacio cuyo horario empieza, o el de la app que pasa delante (`AutoSwitch`, con pruebas). Solo en el cambio, para respetar lo que el usuario cambie a mano.
+  - **`HostManager.UpdateResting`**: una pantalla tapada por una ventana maximizada o del tamaño del área de trabajo (`CoveringWindows`: ni la del escritorio, ni las ocultas en otro escritorio virtual) oculta su vista. Una ventana transparente se redibuja por software en cada cambio aunque nadie la vea; oculta no cuesta nada.
+
+### Aspecto por panel
+
+`PanelState.Tint` y `Opacity` sustituyen al tinte del tema en ese panel (`PanelHost.ApplyTint`); `HideTitle` oculta las filas que `Ui.Header` marca con `Tag = "header"` (el calendario no la marca: lleva la navegación del mes).
 
 ## Atajos
 
