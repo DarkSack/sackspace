@@ -159,8 +159,7 @@ public partial class PanelHost : UserControl
         _mouseStart = Mouse.GetPosition(_host);
         Panel.Z = _host.NextZ();
         Canvas.SetZIndex(this, Panel.Z);
-        ShadowFx.Opacity = 0.42;
-        ShadowFx.BlurRadius = 36;
+        Shadow.Opacity = 1;
         Anim.ScaleTo(this, 1.015);
     }
 
@@ -184,8 +183,7 @@ public partial class PanelHost : UserControl
 
     private void EndDrag()
     {
-        ShadowFx.Opacity = 0.26;
-        ShadowFx.BlurRadius = 24;
+        Shadow.Opacity = 0.62;
         Anim.ScaleTo(this, 1);
         Panel.Bounds = Bounds;
         Panel.Monitor = _host.Monitor.Key;

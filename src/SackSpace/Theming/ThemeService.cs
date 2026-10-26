@@ -57,51 +57,57 @@ public sealed class ThemeService
         Current = t;
 
         var accent = C(t.Accent);
-        Set("AccentBrush", accent, animate);
-        Set("AccentSoftBrush", Color.FromArgb(t.IsDark ? (byte)56 : (byte)40, accent.R, accent.G, accent.B), animate);
-        Set("AccentForegroundBrush", t.Accent.Luminance > 0.45 ? Color.FromRgb(16, 19, 26) : Colors.White, animate);
+        Set("AccentBrush", accent);
+        Set("AccentSoftBrush", Color.FromArgb(t.IsDark ? (byte)56 : (byte)40, accent.R, accent.G, accent.B));
+        Set("AccentForegroundBrush", t.Accent.Luminance > 0.45 ? Color.FromRgb(16, 19, 26) : Colors.White);
 
         var tint = C(t.GlassTint);
-        Set("GlassTintBrush", Color.FromArgb((byte)Math.Round(t.GlassOpacity * 255), tint.R, tint.G, tint.B), false);
+        Set("GlassTintBrush", Color.FromArgb((byte)Math.Round(t.GlassOpacity * 255), tint.R, tint.G, tint.B));
         // Menus and sheets need to stay readable over anything: same tint, more opaque.
-        Set("SurfaceBrush", Color.FromArgb((byte)Math.Round(Math.Max(t.GlassOpacity, 0.94) * 255), tint.R, tint.G, tint.B), false);
-        Set("GlassBorderBrush", C(t.Border), false);
-        Set("ScrimBrush", C(t.Scrim), false);
+        Set("SurfaceBrush", Color.FromArgb((byte)Math.Round(Math.Max(t.GlassOpacity, 0.94) * 255), tint.R, tint.G, tint.B));
+        Set("GlassBorderBrush", C(t.Border));
+        Set("ScrimBrush", C(t.Scrim));
 
         var fg = C(t.Foreground);
-        Set("TextBrush", fg, false);
-        Set("TextSecondaryBrush", C(t.SecondaryForeground), false);
-        Set("TextTertiaryBrush", Color.FromArgb(150, t.SecondaryForeground.R, t.SecondaryForeground.G, t.SecondaryForeground.B), false);
-        Set("HoverBrush", Color.FromArgb(22, fg.R, fg.G, fg.B), false);
-        Set("PressedBrush", Color.FromArgb(38, fg.R, fg.G, fg.B), false);
-        Set("DividerBrush", Color.FromArgb(28, fg.R, fg.G, fg.B), false);
-        Set("TrackBrush", Color.FromArgb(40, fg.R, fg.G, fg.B), false);
+        Set("TextBrush", fg);
+        Set("TextSecondaryBrush", C(t.SecondaryForeground));
+        Set("TextTertiaryBrush", Color.FromArgb(150, t.SecondaryForeground.R, t.SecondaryForeground.G, t.SecondaryForeground.B));
+        Set("HoverBrush", Color.FromArgb(22, fg.R, fg.G, fg.B));
+        Set("PressedBrush", Color.FromArgb(38, fg.R, fg.G, fg.B));
+        Set("DividerBrush", Color.FromArgb(28, fg.R, fg.G, fg.B));
+        Set("TrackBrush", Color.FromArgb(40, fg.R, fg.G, fg.B));
 
-        var highlight = new LinearGradientBrush(t.IsDark ? Color.FromArgb(26, 255, 255, 255) : Color.FromArgb(70, 255, 255, 255),
-            Color.FromArgb(0, 255, 255, 255), new Point(0, 0), new Point(0, 0.45));
-        highlight.Freeze();
-        _dict["GlassHighlightBrush"] = highlight;
+        if (_dict["GlassHighlightBrush"] is not LinearGradientBrush old || old.GradientStops[0].Color.A != (t.IsDark ? 26 : 70))
+        {
+            var highlight = new LinearGradientBrush(t.IsDark ? Color.FromArgb(26, 255, 255, 255) : Color.FromArgb(70, 255, 255, 255),
+                Color.FromArgb(0, 255, 255, 255), new Point(0, 0), new Point(0, 0.45));
+            highlight.Freeze();
+            _dict["GlassHighlightBrush"] = highlight;
+        }
 
-        _dict["PanelCornerRadius"] = new CornerRadius(t.CornerRadius);
-        _dict["PanelCornerRadiusValue"] = t.CornerRadius;
-        _dict["ControlCornerRadius"] = new CornerRadius(Math.Min(12, Math.Max(4, t.CornerRadius / 2)));
-        _dict["AppFont"] = new FontFamily(theme.FontFamily);
+        Put("PanelCornerRadius", new CornerRadius(t.CornerRadius));
+        Put("PanelCornerRadiusValue", t.CornerRadius);
+        Put("ControlCornerRadius", new CornerRadius(Math.Min(12, Math.Max(4, t.CornerRadius / 2))));
+        Put("AppFont", new FontFamily(theme.FontFamily));
         Changed?.Invoke();
     }
 
-    private void Set(string key, Color color, bool animate)
+    /// <summary>
+    /// Only what really changed is replaced: every new resource makes each element using it
+    /// (in every panel, on every screen) look it up and repaint. Switching workspaces changes
+    /// the accent and nothing else. Not animated, for the same reason.
+    /// </summary>
+    private void Set(string key, Color color)
     {
-        var from = (_dict[key] as SolidColorBrush)?.Color ?? color;
-        var brush = new SolidColorBrush(from);
-        if (animate && Anim.Enabled && from != color)
-            brush.BeginAnimation(SolidColorBrush.ColorProperty,
-                new ColorAnimation(color, TimeSpan.FromMilliseconds(350)) { EasingFunction = Anim.Ease });
-        else
-        {
-            brush.Color = color;
-            brush.Freeze();
-        }
+        if (_dict[key] is SolidColorBrush current && current.Color == color) return;
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
         _dict[key] = brush;
+    }
+
+    private void Put(string key, object value)
+    {
+        if (!Equals(_dict[key], value)) _dict[key] = value;
     }
 
     public static Color C(Argb a) => Color.FromArgb(a.A, a.R, a.G, a.B);

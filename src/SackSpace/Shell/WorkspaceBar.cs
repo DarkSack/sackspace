@@ -21,7 +21,7 @@ public sealed class WorkspaceBar : UserControl
     private readonly AppServices _services;
     private readonly HostView _host;
     private readonly ImageBrush _glass = new() { ViewboxUnits = BrushMappingMode.Absolute, Stretch = Stretch.Fill };
-    private readonly Border _shadow;
+    private readonly BakedShadow _shadow;
     private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal };
     private readonly Border _indicator = new() { HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(18) };
     private readonly Button _editButton;
@@ -38,11 +38,7 @@ public sealed class WorkspaceBar : UserControl
 
         var radius = new CornerRadius(26);
         var root = new Grid();
-        _shadow = new Border
-        {
-            CornerRadius = radius, Background = Brushes.Black, Margin = new Thickness(2), IsHitTestVisible = false,
-            Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 5, Direction = 270, Opacity = 0.26, RenderingBias = RenderingBias.Performance },
-        };
+        _shadow = new BakedShadow { Radius = radius.TopLeft };
         root.Children.Add(_shadow);
         root.Children.Add(new Border { CornerRadius = radius, Background = _glass });
         root.Children.Add(Layer(radius, "GlassTintBrush"));

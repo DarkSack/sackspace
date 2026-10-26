@@ -5,7 +5,7 @@
              UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal" SnapsToDevicePixels="True">
     <Grid x:Name="Root">
         <!-- Raised or editing: the blurred wallpaper covers the windows behind. Desktop mode: invisible and click-through. -->
-        <Grid x:Name="Backdrop" Opacity="0" IsHitTestVisible="False">
+        <Grid x:Name="Backdrop" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
             <Rectangle>
                 <Rectangle.Fill>
                     <ImageBrush x:Name="BackdropBrush" ViewboxUnits="Absolute" Stretch="Fill" />
@@ -14,7 +14,7 @@
             <Rectangle Fill="{DynamicResource ScrimBrush}" />
         </Grid>
 
-        <Rectangle x:Name="DotGrid" Opacity="0" IsHitTestVisible="False" />
+        <Rectangle x:Name="DotGrid" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False" />
 
         <!-- One Canvas per workspace being shown; two only during a switch animation. -->
         <Grid x:Name="Layers" />

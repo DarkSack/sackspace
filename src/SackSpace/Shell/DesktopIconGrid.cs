@@ -25,6 +25,7 @@ public sealed class DesktopIconGrid : WrapPanel
     private static readonly Brush Clickable = Frozen(0x01, 0xFF, 0xFF, 0xFF);
     private static readonly Brush Hover = Frozen(0x2E, 0xFF, 0xFF, 0xFF);
     private static readonly Brush Selected = Frozen(0x55, 0x9C, 0xC8, 0xFF);
+    private static readonly Brush LabelShadow = Frozen(0xD0, 0x00, 0x00, 0x00);
 
     private readonly HostView _host;
     private readonly Workspace _ws;
@@ -44,8 +45,6 @@ public sealed class DesktopIconGrid : WrapPanel
         Canvas.SetLeft(this, 4);
         Canvas.SetTop(this, area.Y + 4);
         Panel.SetZIndex(this, int.MinValue);
-        // One shadow for every label keeps white text readable on any wallpaper.
-        Effect = new DropShadowEffect { ShadowDepth = 1, BlurRadius = 3, Opacity = 0.9, Color = Colors.Black, RenderingBias = RenderingBias.Performance };
 
         foreach (var item in host.Services.Icons.Items.Where(i => DesktopIconLists.Shows(ws, i.Path)))
             Children.Add(Icon(item));
@@ -54,13 +53,19 @@ public sealed class DesktopIconGrid : WrapPanel
     private Border Icon(DesktopItem item)
     {
         var image = new Image { Width = _icon, Height = _icon };
-        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        // The shell hands the icon at its exact pixel size: Fant scaling (HighQuality) would cost a lot in software for nothing.
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.LowQuality);
         Load(image, item.Path);
-        var label = new TextBlock
+        TextBlock Label(Brush brush, Thickness margin) => new()
         {
-            Text = item.Name, Foreground = Brushes.White, FontSize = 12, TextAlignment = TextAlignment.Center,
-            TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 33, Margin = new Thickness(0, 3, 0, 0),
+            Text = item.Name, Foreground = brush, FontSize = 12, TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 33, Margin = margin,
         };
+        // A dark copy 1 px down-right keeps white text readable on any wallpaper; a blur effect
+        // here was redrawn in software on every frame the workspace animated.
+        var label = new Grid { Margin = new Thickness(0, 3, 0, 0) };
+        label.Children.Add(Label(LabelShadow, new Thickness(1, 1, -1, -1)));
+        label.Children.Add(Label(Brushes.White, new Thickness(0)));
         var stack = new StackPanel();
         stack.Children.Add(image);
         stack.Children.Add(label);

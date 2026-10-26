@@ -92,10 +92,12 @@ public partial class HostView : UserControl
         var old = _layer;
         _workspaceId = ws.Id;
         _layer = BuildLayer(ws);
+        if (animate && direction != 0 && Anim.Enabled) _layer.Opacity = 0;
         Layers.Children.Add(_layer);
-        if (old is not null) Retire(old, direction, animate);
+        if (old is not null) Retire(old);
         if (!animate) return;
-        if (direction != 0) Anim.SlideIn(_layer, direction * 90, 0, 320);
+        // Every frame of a full-screen layer is redrawn in software: one short fade, nothing sliding.
+        if (direction != 0) Anim.Fade(_layer, 1, 160);
         else foreach (var p in Panels) Anim.Pop(p);
     }
 
@@ -146,16 +148,10 @@ public partial class HostView : UserControl
         return host;
     }
 
-    private void Retire(Canvas old, int direction, bool animate)
+    private void Retire(Canvas old)
     {
-        old.IsHitTestVisible = false;
-        void Drop()
-        {
-            Layers.Children.Remove(old);
-            foreach (var p in old.Children.OfType<PanelHost>()) p.DisposeWidget();
-        }
-        if (animate) Anim.SlideOut(old, -direction * 90, 0, 240, Drop);
-        else Drop();
+        Layers.Children.Remove(old);
+        foreach (var p in old.Children.OfType<PanelHost>()) p.DisposeWidget();
     }
 
     public void DisposeAll()
@@ -173,8 +169,9 @@ public partial class HostView : UserControl
     public void SetMode(bool raised, bool editing)
     {
         Backdrop.IsHitTestVisible = raised;
-        Anim.Fade(Backdrop, raised ? 1 : 0, 240);
-        Anim.Fade(DotGrid, editing ? 1 : 0, 240);
+        // Full-screen layers: shown at once, a fade would redraw the whole screen for each frame.
+        Anim.Set(Backdrop, raised ? 1 : 0);
+        Anim.Set(DotGrid, editing ? 1 : 0);
         if (editing && EditToolbar.Visibility != Visibility.Visible)
         {
             EditToolbar.Visibility = Visibility.Visible;
@@ -371,7 +368,7 @@ public partial class HostView : UserControl
         (Window.GetWindow(this) as DesktopHost)?.FocusHost();
         SheetSlot.Content = sheet;
         Overlay.Visibility = Visibility.Visible;
-        Anim.Fade(OverlayScrim, 1, 180);
+        Anim.Set(OverlayScrim, 1);
         Anim.SlideIn(sheet, 0, 40);
     }
 
@@ -379,13 +376,9 @@ public partial class HostView : UserControl
     {
         if (!SheetOpen) return;
         var sheet = SheetSlot.Content as FrameworkElement;
-        Anim.Fade(OverlayScrim, 0, 160, () =>
-        {
-            if (!ReferenceEquals(SheetSlot.Content, sheet)) return; // another sheet opened meanwhile
-            Overlay.Visibility = Visibility.Collapsed;
-            SheetSlot.Content = null;
-        });
-        if (sheet is not null) Anim.Fade(sheet, 0, 140);
+        Anim.Set(OverlayScrim, 0);
+        Overlay.Visibility = Visibility.Collapsed;
+        SheetSlot.Content = null;
     }
 
     // ── Snackbar ─────────────────────────────────────────────

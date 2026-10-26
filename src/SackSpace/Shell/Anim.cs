@@ -16,6 +16,25 @@ public static class Anim
 
     public static void Configure(bool userEnabled) => _userEnabled = userEnabled;
 
+    /// <summary>
+    /// 30 frames a second instead of 60: each frame of a transparent window is drawn in
+    /// software and copied whole, and at these lengths (≤ 320 ms) the eye cannot tell.
+    /// </summary>
+    public static void LimitFrameRate() =>
+        Timeline.DesiredFrameRateProperty.OverrideMetadata(typeof(Timeline), new FrameworkPropertyMetadata { DefaultValue = 30 });
+
+    /// <summary>
+    /// Opacity at once, cancelling any fade on it. At 0 the element is also collapsed: the
+    /// software renderer still draws a transparent element, and a full-screen one costs as
+    /// much invisible as visible on every repaint.
+    /// </summary>
+    public static void Set(UIElement e, double opacity)
+    {
+        e.BeginAnimation(UIElement.OpacityProperty, null);
+        e.Opacity = opacity;
+        e.Visibility = opacity > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public static readonly IEasingFunction Ease = Frozen(new CubicEase { EasingMode = EasingMode.EaseOut });
     public static readonly IEasingFunction EaseInOut = Frozen(new CubicEase { EasingMode = EasingMode.EaseInOut });
     /// <summary>A little overshoot, like Android's springs.</summary>
@@ -48,17 +67,6 @@ public static class Anim
         t.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(fromX, 0, Ms(ms)) { EasingFunction = Ease });
         t.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(fromY, 0, Ms(ms)) { EasingFunction = Ease });
         e.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Ms(ms * 3 / 4)) { EasingFunction = Ease });
-    }
-
-    public static void SlideOut(FrameworkElement e, double toX, double toY, int ms = 220, Action? done = null)
-    {
-        if (!Enabled) { done?.Invoke(); return; }
-        var t = Translate(e);
-        var fade = new DoubleAnimation(0, Ms(ms)) { EasingFunction = Ease };
-        if (done is not null) fade.Completed += (_, _) => done();
-        t.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(toX, Ms(ms)) { EasingFunction = Ease });
-        t.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(toY, Ms(ms)) { EasingFunction = Ease });
-        e.BeginAnimation(UIElement.OpacityProperty, fade);
     }
 
     /// <summary>Grows from 92 % with a soft overshoot: how a new widget lands.</summary>

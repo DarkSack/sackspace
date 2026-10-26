@@ -41,6 +41,7 @@ public partial class App : Application
         }
         var data = Path.GetFullPath(Arg("--data") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SackSpace"));
         var snapshot = Arg("--snapshot");
+        var bench = e.Args.Contains("--bench");
         Directory.CreateDirectory(data);
         Log.Init(data);
 
@@ -62,6 +63,7 @@ public partial class App : Application
         // Transparent full-screen windows are copied back to memory on every frame anyway, so
         // the GPU path costs the same CPU and ~4× the memory (measured: 340 MB vs 80 MB).
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        Anim.LimitFrameRate();
 
         var store = new ConfigStore(data);
         var (config, outcome) = store.Load(CreateDefault);
@@ -113,6 +115,7 @@ public partial class App : Application
         _tray = new TrayIcon(s, Quit);
         s.Timers.Notify = _tray.Notify;
         _ = new AutoSwitcher(s);
+        if (bench) _ = Bench();
         ListenForSecondLaunch();
         SessionEnding += (_, _) => s.Session.Flush();
 
@@ -270,6 +273,31 @@ public partial class App : Application
         _s?.Session.Flush();
         _tray?.Dispose();
         base.OnExit(e);
+    }
+
+    // ── --bench: CPU spent by the animations, for comparing builds (use with --data) ──
+
+    private async Task Bench()
+    {
+        var hosts = _s!.Hosts;
+        using var me = System.Diagnostics.Process.GetCurrentProcess();
+        TimeSpan Cpu() { me.Refresh(); return me.TotalProcessorTime; }
+        await Task.Delay(4000);
+        var ids = _s.Session.Config.Workspaces.Select(w => w.Id).ToList();
+        var t0 = Cpu();
+        for (var i = 0; i < 12; i++)
+        {
+            var id = ids[(i + 1) % ids.Count];
+            hosts.SwitchTo(id);
+            await Task.Delay(800);
+        }
+        var t1 = Cpu();
+        for (var i = 0; i < 6; i++) { hosts.SetRaised(true); await Task.Delay(600); hosts.SetRaised(false); await Task.Delay(600); }
+        var t2 = Cpu();
+        await Task.Delay(6000);
+        var t3 = Cpu();
+        Log.Info($"Banco: cambio de espacio {(t1 - t0).TotalMilliseconds / 12:0} ms de CPU, subir y bajar {(t2 - t1).TotalMilliseconds / 6:0} ms, reposo {(t3 - t2).TotalMilliseconds / 6:0} ms/s");
+        Quit();
     }
 
     // ── --snapshot: every workspace, edit mode and the gallery, as PNGs ──

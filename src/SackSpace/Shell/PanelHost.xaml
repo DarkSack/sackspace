@@ -1,13 +1,10 @@
 <UserControl x:Class="SackSpace.Shell.PanelHost"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:SackSpace.Shell">
     <Grid x:Name="Root">
-        <!-- Shadow: an opaque shape under the glass; only its blur shows outside. -->
-        <Border x:Name="Shadow" CornerRadius="{DynamicResource PanelCornerRadius}" Background="Black" Margin="2" IsHitTestVisible="False">
-            <Border.Effect>
-                <DropShadowEffect x:Name="ShadowFx" BlurRadius="24" ShadowDepth="5" Direction="270" Opacity="0.26" RenderingBias="Performance" />
-            </Border.Effect>
-        </Border>
+        <!-- Shadow: an opaque shape under the glass, baked into a bitmap; only its blur shows outside. -->
+        <shell:BakedShadow x:Name="Shadow" Radius="{DynamicResource PanelCornerRadiusValue}" />
 
         <!-- Glass: the blurred wallpaper behind this exact spot, then the theme's tint and a top highlight. -->
         <Border x:Name="Glass" CornerRadius="{DynamicResource PanelCornerRadius}">

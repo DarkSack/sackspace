@@ -104,7 +104,8 @@ public sealed class ShortcutsWidget : DockPanel
     private Button Tile(ShortcutItem item)
     {
         var image = new Image { Width = _icon, Height = _icon };
-        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        // The shell hands the icon at its exact pixel size: Fant scaling (HighQuality) would cost a lot in software for nothing.
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.LowQuality);
         LoadIcon(image, item.Path);
 
         var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
