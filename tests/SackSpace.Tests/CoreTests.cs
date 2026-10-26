@@ -612,3 +612,29 @@ public class ShiftScheduleTests
         Assert.Equal("2 h 15 min", ShiftSchedule.Span(TimeSpan.FromMinutes(134.2)));
     }
 }
+
+public class ScheduleEventTests
+{
+    [Fact]
+    public void Activities_come_weekly_or_once_and_old_ones_go_away()
+    {
+        var monday = new DateTime(2026, 10, 26);
+        var s = new JsonObject();
+        ScheduleEvent.WriteAll(s,
+        [
+            new("a", "Coaching", TimeSpan.FromHours(16.5), null, "mon"),
+            new("b", "Junta", TimeSpan.FromHours(10), monday, null),
+            new("c", "Llevar laptop", null, monday, null),
+            new("d", "Dentista", null, monday.AddDays(-3), null),
+        ]);
+
+        Assert.Equal(["Junta", "Coaching", "Llevar laptop"], ShiftSchedule.EventsOn(s, monday).Select(e => e.Text));
+        Assert.Equal(["Coaching"], ShiftSchedule.EventsOn(s, monday.AddDays(7)).Select(e => e.Text)); // weekly repeats
+        Assert.Equal("16:30  Coaching", ShiftSchedule.EventsOn(s, monday.AddDays(7))[0].Label);
+
+        Assert.True(ShiftSchedule.DropPast(s, monday));
+        Assert.DoesNotContain(ScheduleEvent.ReadAll(s), e => e.Text == "Dentista");
+        Assert.False(ShiftSchedule.DropPast(s, monday));
+        Assert.Equal(new DateTime(2026, 10, 26), ShiftSchedule.WeekStart(new DateTime(2026, 11, 1))); // Sunday → its Monday
+    }
+}

@@ -39,6 +39,9 @@ public sealed class WidgetContext(PanelState panel, AppServices services, HostVi
     public void Save() => Services.Session.MarkDirty();
 
     public void Toast(string text) => Host.ShowSnackbar(text);
+
+    /// <summary>Makes the panel this tall (it stays inside the screen).</summary>
+    public void Resize(double height) => Host.ResizePanel(Panel, height);
 }
 
 public static class WidgetRegistry

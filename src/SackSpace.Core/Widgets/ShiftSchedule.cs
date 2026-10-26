@@ -99,4 +99,59 @@ public static partial class ShiftSchedule
     }
 
     public static string Range(Shift s) => $"{s.Start:hh\\:mm} – {s.End:hh\\:mm}";
+
+    // ── Activities ───────────────────────────────────────────
+
+    /// <summary>The Monday of the week a date falls in.</summary>
+    public static DateTime WeekStart(DateTime date) => date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
+
+    /// <summary>A day's activities, timed ones first in order, then the rest as added.</summary>
+    public static List<ScheduleEvent> EventsOn(JsonObject settings, DateTime date) =>
+        ScheduleEvent.ReadAll(settings).Where(e => e.On(date))
+            .OrderBy(e => e.Time is null).ThenBy(e => e.Time).ToList();
+
+    /// <summary>One-off activities of days already gone are dropped; true if any was.</summary>
+    public static bool DropPast(JsonObject settings, DateTime today)
+    {
+        var all = ScheduleEvent.ReadAll(settings);
+        var kept = all.Where(e => e.Date is not { } d || d >= today.Date).ToList();
+        if (kept.Count == all.Count) return false;
+        ScheduleEvent.WriteAll(settings, kept);
+        return true;
+    }
+}
+
+/// <summary>
+/// An activity in the schedule: on one date, or every week on a weekday ("mon"…"sun").
+/// Time is optional. Stored in the panel's settings under "events".
+/// </summary>
+public sealed record ScheduleEvent(string Id, string Text, TimeSpan? Time, DateTime? Date, string? Weekly)
+{
+    public bool On(DateTime date) => Date is { } d ? d.Date == date.Date : Weekly == ShiftSchedule.Key(date.DayOfWeek);
+
+    public string Label => Time is { } t ? $"{t:hh\\:mm}  {Text}" : Text;
+
+    public static List<ScheduleEvent> ReadAll(JsonObject settings) =>
+        settings["events"] is JsonArray items
+            ? items.OfType<JsonObject>().Select(o => new ScheduleEvent(
+                    o.GetString("id", Guid.NewGuid().ToString("N")[..8]),
+                    o.GetString("text", ""),
+                    ParseTime(o.GetString("time", "")),
+                    DateTime.TryParseExact(o.GetString("date", ""), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null,
+                    o["weekly"] is null ? null : o.GetString("weekly", "")))
+                .Where(e => e.Text.Length > 0 && (e.Date is not null || e.Weekly is not null))
+                .ToList()
+            : [];
+
+    public static void WriteAll(JsonObject settings, IEnumerable<ScheduleEvent> events) =>
+        settings["events"] = new JsonArray(events.Select(e =>
+        {
+            var o = new JsonObject { ["id"] = e.Id, ["text"] = e.Text };
+            if (e.Time is { } t) o["time"] = t.ToString(@"hh\:mm");
+            if (e.Date is { } d) o["date"] = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            if (e.Weekly is { } w) o["weekly"] = w;
+            return (JsonNode)o;
+        }).ToArray());
+
+    private static TimeSpan? ParseTime(string text) => Model.AutoSwitch.TryParseTime(text, out var t) ? t : null;
 }

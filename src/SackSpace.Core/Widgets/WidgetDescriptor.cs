@@ -102,7 +102,7 @@ public static class BuiltInWidgets
             new("work", "Minutos de trabajo (Pomodoro)", WidgetSettingKind.Number, "25", Min: 5, Max: 90, Step: 5),
             new("break", "Minutos de descanso (Pomodoro)", WidgetSettingKind.Number, "5", Min: 1, Max: 30),
         ]),
-        new(Schedule, "Horario", "Tu turno de hoy, cuánto falta para entrar, comer o salir, y la semana. Cada día se escribe en sus opciones.", Glyphs.Work, 340, 330, 240, 150,
+        new(Schedule, "Horario", "Tu turno de hoy, cuánto falta para entrar, comer o salir, tus actividades y la semana. Los turnos se escriben en sus opciones; las actividades, con el +.", Glyphs.Work, 340, 330, 240, 150,
         [
             new("mon", "Lunes (p. ej. 09:00-18:00 comida 14:00-15:00, o Descanso)", WidgetSettingKind.Text, ""),
             new("tue", "Martes", WidgetSettingKind.Text, ""),
@@ -111,7 +111,6 @@ public static class BuiltInWidgets
             new("fri", "Viernes", WidgetSettingKind.Text, ""),
             new("sat", "Sábado", WidgetSettingKind.Text, ""),
             new("sun", "Domingo", WidgetSettingKind.Text, ""),
-            new("week", "Mostrar la semana", WidgetSettingKind.Toggle, "true"),
         ]),
     ];
 

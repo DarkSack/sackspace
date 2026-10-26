@@ -249,6 +249,17 @@ public partial class HostView : UserControl
         Anim.Pop(AddHost(panel));
     }
 
+    /// <summary>A widget asks for another height (the schedule folding up); kept on screen and saved.</summary>
+    public void ResizePanel(PanelState panel, double height)
+    {
+        var host = Panels.FirstOrDefault(p => p.Panel == panel);
+        if (host is null) return;
+        var r = LayoutMath.Clamp(host.Bounds with { Height = Math.Max(host.Descriptor.MinHeight, height) }, LayoutBounds);
+        host.Place(r);
+        panel.Bounds = r;
+        Services.Session.MarkDirty();
+    }
+
     public void RestorePanel(PanelState panel)
     {
         panel.Hidden = false;
