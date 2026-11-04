@@ -15,6 +15,12 @@ Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difum
 - **Privado**: sin cuentas ni estadísticas. Solo el widget de Clima sale a internet (a Open-Meteo, con la ciudad que escribas). Todo queda en `%LOCALAPPDATA%\SackSpace`.
 - **Ligero**: 0 % de CPU en reposo y unos 80 MB de memoria; relojes y medidores se pausan con juegos o vídeos a pantalla completa y con la sesión bloqueada, y una pantalla tapada por una ventana maximizada deja de dibujarse. «Bloquear el diseño» (Ajustes › General) evita mover paneles sin querer.
 
+## Instalar
+
+SackSpace es **gratis**. Funciona en Windows 10 2004 o posterior y no necesita tener .NET instalado.
+
+Ejecuta `SackSpace-Setup-<versión>.exe` (ver [Compilar](#compilar)). El asistente muestra las condiciones de uso y privacidad, que hay que aceptar, y permite elegir la carpeta y marcar el acceso en el escritorio y el inicio con Windows. No pide permisos de administrador. Para actualizar, se instala la versión nueva encima: tu configuración se conserva. Para desinstalar, ve a Configuración › Aplicaciones.
+
 ## Uso
 
 | Acción | Cómo |
@@ -31,10 +37,12 @@ Los atajos se cambian en Ajustes › Atajos de teclado. Ninguno usa `Ctrl+Alt` c
 Requiere el SDK de .NET 10 en Windows 10 2004 o posterior.
 
 ```powershell
-dotnet test SackSpace.slnx          # 44 pruebas del núcleo
+dotnet test SackSpace.slnx          # pruebas del núcleo
 dotnet run --project src/SackSpace  # arranca la app
-.\publish.ps1                       # dist\SackSpace.exe, un solo archivo autocontenido
+.\publish.ps1                       # dist\SackSpace.exe (un solo archivo autocontenido) y dist\SackSpace-Setup-<versión>.exe
 ```
+
+El instalador se genera con [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`); su script es [installer/SackSpace.iss](installer/SackSpace.iss). Sin Inno Setup, `publish.ps1` solo genera el exe.
 
 Argumentos útiles para probar sin tocar tu configuración:
 
@@ -42,3 +50,7 @@ Argumentos útiles para probar sin tocar tu configuración:
 - `--snapshot <carpeta>`: dibuja cada espacio, el modo edición y la galería en PNG por pantalla, sin mostrar ventanas, y sale.
 
 La arquitectura está en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+
+## Licencia
+
+SackSpace es gratis: puedes usarlo en todos tus equipos, pero no venderlo ni distribuir versiones modificadas. Las condiciones completas y la privacidad están en [installer/LICENCIA.txt](installer/LICENCIA.txt), el mismo texto que muestra el instalador.
