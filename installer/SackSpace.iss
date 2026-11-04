@@ -58,3 +58,14 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,SackSpace}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// Al desinstalar Windows no cierra la app como al instalar, y con el exe abierto no se puede borrar.
+function InitializeUninstall(): Boolean;
+var
+  Code: Integer;
+begin
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM {#AppExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Sleep(500);
+  Result := True;
+end;
