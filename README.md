@@ -19,7 +19,7 @@ Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difum
 
 SackSpace es **gratis**. Funciona en Windows 10 2004 o posterior y no necesita tener .NET instalado.
 
-Ejecuta `SackSpace-Setup-<versión>.exe` (ver [Compilar](#compilar)). El asistente muestra las condiciones de uso y privacidad, que hay que aceptar, y permite elegir la carpeta y marcar el acceso en el escritorio y el inicio con Windows. No pide permisos de administrador. Para actualizar, se instala la versión nueva encima: tu configuración se conserva. Para desinstalar, ve a Configuración › Aplicaciones.
+**[Descarga el instalador](https://github.com/DarkSack/sackspace/releases/latest)** (`SackSpace-Setup-<versión>.exe`, en *Assets*) y ábrelo. No está firmado: si Windows muestra «Windows protegió su PC», pulsa **Más información › Ejecutar de todas formas**. El asistente muestra las condiciones de uso y privacidad, que hay que aceptar, y permite elegir la carpeta y marcar el acceso en el escritorio y el inicio con Windows. No pide permisos de administrador. Para actualizar, se instala la versión nueva encima: tu configuración se conserva. Para desinstalar, ve a Configuración › Aplicaciones.
 
 ## Uso
 
