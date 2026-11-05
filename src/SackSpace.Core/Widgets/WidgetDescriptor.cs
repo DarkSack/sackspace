@@ -46,6 +46,7 @@ public static class BuiltInWidgets
     public const string Weather = "weather";
     public const string Timer = "timer";
     public const string Schedule = "schedule";
+    public const string Usage = "aiusage";
 
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
@@ -90,7 +91,7 @@ public static class BuiltInWidgets
         [
             new("interval", "Actualizar cada", WidgetSettingKind.Choice, "2 s", ["1 s", "2 s", "5 s"]),
         ]),
-        new(Weather, "Clima", "El tiempo de ahora y de los próximos días (Open-Meteo, sin cuenta). El único widget que usa internet.", Glyphs.Weather, 340, 200, 220, 120,
+        new(Weather, "Clima", "El tiempo de ahora y de los próximos días (Open-Meteo, sin cuenta). Usa internet.", Glyphs.Weather, 340, 200, 220, 120,
         [
             new("city", "Ciudad", WidgetSettingKind.Text, ""),
             new("days", "Mostrar los próximos días", WidgetSettingKind.Toggle, "true"),
@@ -111,6 +112,11 @@ public static class BuiltInWidgets
             new("fri", "Viernes", WidgetSettingKind.Text, ""),
             new("sat", "Sábado", WidgetSettingKind.Text, ""),
             new("sun", "Domingo", WidgetSettingKind.Text, ""),
+        ]),
+        new(Usage, "Uso de IA", "Cuánto llevas de las 5 horas y de la semana en tus cuentas de Claude y ChatGPT. Con una carpeta de Claude Code se pregunta a Anthropic con tu sesión (usa internet); con una de Claude Desktop se lee lo que la app guarda cada 15 min mientras está abierta; ChatGPT se lee de las sesiones de Codex en tu PC.", Glyphs.Gauge, 340, 280, 240, 150,
+        [
+            new("claude", "Cuentas de Claude: Nombre=carpeta de Claude Code o de Claude Desktop, separadas por ;", WidgetSettingKind.Text, @"Escritorio=%APPDATA%\Claude; Claude Code=%USERPROFILE%\.claude"),
+            new("chatgpt", "Cuentas de ChatGPT: Nombre=carpeta de Codex, separadas por ;", WidgetSettingKind.Text, @"Principal=%USERPROFILE%\.codex"),
         ]),
     ];
 

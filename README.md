@@ -12,7 +12,7 @@ Tu escritorio de Windows, ordenado por espacios. Paneles de cristal (fondo difum
 - **Iconos del escritorio por espacio** (Ajustes › General): cada espacio muestra solo los iconos que elijas, con el clic derecho sobre un icono o con el lápiz › Iconos. SackSpace oculta los de Windows mientras está abierto y los dibuja él; al salir vuelven. No mueve ni cambia ningún archivo.
 - **Fondos animados**: con Wallpaper Engine o Lively, el cristal toma el fondo de cada pantalla (su vista previa). También puede usar una imagen propia, o ser transparente y dejar ver el fondo en movimiento.
 - **Se guarda solo**: cada cambio se escribe al momento (con copia del anterior). Exportar e importar una copia desde Ajustes.
-- **Privado**: sin cuentas ni estadísticas. Solo el widget de Clima sale a internet (a Open-Meteo, con la ciudad que escribas). Todo queda en `%LOCALAPPDATA%\SackSpace`.
+- **Privado**: sin cuentas ni estadísticas. Solo salen a internet el widget de Clima (a Open-Meteo, con la ciudad que escribas) y el de Uso de IA (a Anthropic, con tu sesión de Claude Code, para leer tu uso de Claude; el de ChatGPT se lee de las sesiones de Codex en tu PC). Todo queda en `%LOCALAPPDATA%\SackSpace`.
 - **Ligero**: 0 % de CPU en reposo y unos 80 MB de memoria; relojes y medidores se pausan con juegos o vídeos a pantalla completa y con la sesión bloqueada, y una pantalla tapada por una ventana maximizada deja de dibujarse. «Bloquear el diseño» (Ajustes › General) evita mover paneles sin querer.
 
 ## Instalar

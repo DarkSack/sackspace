@@ -4,7 +4,7 @@ Revisado: 4 de noviembre de 2026
 Responsable: Johan Jafet Del Valle Santiago (Sackito). Contacto: donsackito@protonmail.com
 
 LO CORTO
-SackSpace organiza tu escritorio de Windows en espacios con paneles y widgets. Funciona en tu PC, sin cuenta, sin anuncios y sin estadísticas de uso. Lo único que sale a internet es la consulta del widget de Clima.
+SackSpace organiza tu escritorio de Windows en espacios con paneles y widgets. Funciona en tu PC, sin cuenta, sin anuncios y sin estadísticas de uso. Solo salen a internet los widgets de Clima y de Uso de IA, si los añades.
 
 1. LICENCIA DE USO
 - SackSpace es gratis. Puedes instalarlo y usarlo en todos los equipos que quieras, también las versiones futuras.
@@ -26,9 +26,13 @@ Para funcionar, SackSpace lee en tu PC (sin guardarlo ni enviarlo):
 - Tu fondo de pantalla (de Windows, Wallpaper Engine o Lively), para el efecto de cristal.
 - El uso de CPU, RAM, GPU, discos y red, para los widgets de monitor.
 - Lo que suena en tu reproductor, para el widget de música.
+- Las sesiones de Codex, la sesión de Claude Code y el historial de uso de Claude Desktop de las carpetas que indiques, para el widget de Uso de IA.
 
 4. QUÉ SALE A INTERNET
-Solo el widget de Clima, si lo añades: envía la ciudad que escribas a Open-Meteo (open-meteo.com) para saber su ubicación y el pronóstico. Como cualquier servicio en internet, Open-Meteo recibe la dirección IP de tu conexión. Sin ese widget, SackSpace no se conecta a internet.
+Solo dos widgets, si los añades:
+- Clima: envía la ciudad que escribas a Open-Meteo (open-meteo.com) para saber su ubicación y el pronóstico.
+- Uso de IA: por cada cuenta de Claude, envía a Anthropic (api.anthropic.com) la sesión que Claude Code guarda en tu PC, solo para leer cuánto llevas usado. Lo de ChatGPT se lee de tu PC y no sale.
+Como cualquier servicio en internet, estos reciben la dirección IP de tu conexión. Sin esos widgets, SackSpace no se conecta a internet.
 
 5. CÓMO BORRAR TUS DATOS
 Desinstala SackSpace desde Configuración > Aplicaciones y borra la carpeta %LOCALAPPDATA%\SackSpace. Nosotros no guardamos datos tuyos que borrar.

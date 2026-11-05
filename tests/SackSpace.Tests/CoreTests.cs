@@ -676,3 +676,67 @@ public class ScheduleEventTests
         Assert.Equal([(0, 2), (1, 2), (1, 2), (0, 1)], lanes);
     }
 }
+
+public class AiUsageTests
+{
+    [Fact]
+    public void Accounts_take_a_name_or_the_folder_name_and_expand_variables()
+    {
+        var accounts = AiUsageParser.ParseAccounts(@"Principal=%HOME%\.claude; D:\Otra\.claude ;; Trabajo = ""E:\x""",
+            s => s.Replace("%HOME%", @"C:\Users\Sack"));
+        Assert.Equal(
+            [new AiAccount("Principal", @"C:\Users\Sack\.claude"), new AiAccount(".claude", @"D:\Otra\.claude"), new AiAccount("Trabajo", @"E:\x")],
+            accounts);
+        Assert.Empty(AiUsageParser.ParseAccounts("  "));
+    }
+
+    [Fact]
+    public void Claude_reads_both_windows_and_a_missing_one_stays_empty()
+    {
+        var json = JsonNode.Parse("""{"five_hour":{"utilization":35.0,"resets_at":"2026-11-05T00:49:59.62-06:00"},"seven_day":{"utilization":81,"resets_at":null},"seven_day_opus":null}""")!;
+        var r = AiUsageParser.ParseClaude(json, "max", DateTimeOffset.UnixEpoch);
+        Assert.Equal(35, r.FiveHours!.Percent);
+        Assert.Equal(new DateTimeOffset(2026, 11, 5, 6, 49, 59, 620, TimeSpan.Zero), r.FiveHours.ResetsAt);
+        Assert.Equal(new UsageWindow(81, null), r.Week);
+        Assert.Equal("max", r.Plan);
+        Assert.Null(AiUsageParser.ParseClaude(JsonNode.Parse("{}")!, null, DateTimeOffset.UnixEpoch).FiveHours);
+    }
+
+    [Fact]
+    public void Codex_takes_the_newest_line_with_limits_and_skips_cut_or_empty_ones()
+    {
+        string[] lines =
+        [
+            """{"timestamp":"2026-11-04T10:00:00Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":50,"window_minutes":300,"resets_at":1793871219}}}}""",
+            """{"timestamp":"2026-11-04T11:00:00Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"secondary":{"used_percent":98.0,"window_minutes":10080,"resets_at":1793999395},"primary":{"used_percent":1.0,"window_minutes":300,"resets_at":1793871219},"plan_type":"plus"}}}""",
+            """{"timestamp":"2026-11-04T12:00:00Z","type":"event_msg","payload":{"type":"token_count","rate_limits":null}}""",
+            "\"rate_limits\":{\"primary\":{\"used_pe", // a cut first line of a tail read
+            """{"type":"response_item"}""",
+        ];
+        var r = AiUsageParser.ParseCodexLog(lines, DateTimeOffset.UnixEpoch)!;
+        Assert.Equal(new UsageWindow(1, DateTimeOffset.FromUnixTimeSeconds(1793871219)), r.FiveHours);
+        Assert.Equal(98, r.Week!.Percent);
+        Assert.Equal("plus", r.Plan);
+        Assert.Equal(new DateTimeOffset(2026, 11, 4, 11, 0, 0, TimeSpan.Zero), r.ReadAt);
+        Assert.Null(AiUsageParser.ParseCodexLog(["""{"type":"session_meta"}"""], DateTimeOffset.UnixEpoch));
+    }
+
+    [Fact]
+    public void Claude_Desktop_history_takes_the_newest_sample_with_numbers()
+    {
+        var json = JsonNode.Parse("""{"version":2,"samples":[{"t":1793058262787,"org":"a","u":{"fh":100,"sd":4}},{"t":1793236801324,"org":"a","u":{"fh":0,"sd":91,"xu":1}},{"t":1793300000000,"org":"a","u":{}}]}""")!;
+        var r = AiUsageParser.ParseClaudeDesktopHistory(json)!;
+        Assert.Equal(new UsageWindow(0, null), r.FiveHours);
+        Assert.Equal(new UsageWindow(91, null), r.Week);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1793236801324), r.ReadAt);
+        Assert.Null(AiUsageParser.ParseClaudeDesktopHistory(JsonNode.Parse("""{"samples":[]}""")!));
+    }
+
+    [Fact]
+    public void A_window_whose_reset_has_passed_reads_as_empty()
+    {
+        var w = new UsageWindow(90, new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero));
+        Assert.Equal(w, w.At(new DateTimeOffset(2026, 11, 4, 11, 0, 0, TimeSpan.Zero)));
+        Assert.Equal(new UsageWindow(0, null), w.At(new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero)));
+    }
+}

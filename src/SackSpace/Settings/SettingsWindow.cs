@@ -751,7 +751,7 @@ public sealed class SettingsWindow : Window
         var path = new TextBox { Text = _s.DataFolder, IsReadOnly = true, Style = Ui.Style("GlassTextBox"), FontSize = 12.5, Margin = new Thickness(0, 8, 0, 0) };
         path.SetResourceReference(ForegroundProperty, "TextSecondaryBrush");
         Card("Todo se queda en este equipo",
-            "SackSpace no tiene cuentas ni envía estadísticas. Solo el widget de Clima sale a internet, a Open-Meteo, con la ciudad que escribas. Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
+            "SackSpace no tiene cuentas ni envía estadísticas. Solo salen a internet el widget de Clima, a Open-Meteo con la ciudad que escribas, y el de Uso de IA, a Anthropic con tu sesión de Claude Code. Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
             null, path);
 
         var tools = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };

@@ -59,6 +59,25 @@ public static class Ui
         return b;
     }
 
+    /// <summary>A thin rounded bar filled to <paramref name="used"/> (0-1); red when almost full, like Explorer.</summary>
+    public static Grid Bar(double used)
+    {
+        used = Math.Clamp(used, 0, 1);
+        // Two star columns: the bar fills to the used share without measuring anything.
+        var bar = new Grid { Height = 6, Margin = new Thickness(0, 6, 0, 0) };
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(used, 0.001), GridUnitType.Star) });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(1 - used, 0.001), GridUnitType.Star) });
+        var track = new Border { CornerRadius = new CornerRadius(3) };
+        track.SetResourceReference(Border.BackgroundProperty, "TrackBrush");
+        Grid.SetColumnSpan(track, 2);
+        bar.Children.Add(track);
+        var fill = new Border { CornerRadius = new CornerRadius(3) };
+        if (used >= 0.9) fill.Background = new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
+        else fill.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
+        bar.Children.Add(fill);
+        return bar;
+    }
+
     /// <summary>A rounded image (artwork, app icons).</summary>
     public static Border Picture(ImageSource? source, double size, double radius)
     {

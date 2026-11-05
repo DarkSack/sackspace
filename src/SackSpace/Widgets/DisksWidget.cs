@@ -55,23 +55,9 @@ public sealed class DisksWidget : DockPanel, IDisposable
         top.Children.Add(free);
         top.Children.Add(new TextBlock { Text = name, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis });
 
-        // Two star columns: the bar fills to the used share without measuring anything.
-        var bar = new Grid { Height = 6, Margin = new Thickness(0, 6, 0, 0) };
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(used, 0.001), GridUnitType.Star) });
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(1 - used, 0.001), GridUnitType.Star) });
-        var track = new Border { CornerRadius = new CornerRadius(3) };
-        track.SetResourceReference(Border.BackgroundProperty, "TrackBrush");
-        Grid.SetColumnSpan(track, 2);
-        bar.Children.Add(track);
-        var fill = new Border { CornerRadius = new CornerRadius(3) };
-        // Almost full: red, like Explorer.
-        if (used >= 0.9) fill.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x6B, 0x6B));
-        else fill.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
-        bar.Children.Add(fill);
-
         var row = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
         row.Children.Add(top);
-        row.Children.Add(bar);
+        row.Children.Add(Ui.Bar(used));
         return row;
     }
 
