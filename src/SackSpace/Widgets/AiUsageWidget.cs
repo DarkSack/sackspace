@@ -29,7 +29,7 @@ public static class AiUsageService
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
     private static readonly Dictionary<string, (Task<AiUsageReport> Task, DateTimeOffset At)> Claude = new(StringComparer.OrdinalIgnoreCase);
 
-    static AiUsageService() => Http.DefaultRequestHeaders.UserAgent.ParseAdd("SackSpace/0.2");
+    static AiUsageService() => Http.DefaultRequestHeaders.UserAgent.ParseAdd("SackSpace/0.3");
 
     /// <summary>At most one request per folder every five minutes, failed or not.</summary>
     public static Task<AiUsageReport> GetClaude(string folder)

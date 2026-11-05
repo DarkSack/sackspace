@@ -24,7 +24,7 @@ public static class WeatherService
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
     private static readonly Dictionary<string, Task<WeatherReport>> Reports = new(StringComparer.OrdinalIgnoreCase);
 
-    static WeatherService() => Http.DefaultRequestHeaders.UserAgent.ParseAdd("SackSpace/0.2");
+    static WeatherService() => Http.DefaultRequestHeaders.UserAgent.ParseAdd("SackSpace/0.3");
 
     /// <summary>The cached report while fresh; otherwise a new request (a failed one is retried next time).</summary>
     public static Task<WeatherReport> Get(string city)
