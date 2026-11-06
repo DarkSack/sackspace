@@ -64,6 +64,142 @@ public sealed class StorageWidget : DockPanel, IDisposable
         if (StorageScanner.Running is { } running) Wait(running);
         else if (Due() && !StorageScanner.Hold) Scan();
         else ShowStatus();
+        LoadGames();
+    }
+
+    private IReadOnlyList<InstalledGame> _games = [];
+
+    private async void LoadGames()
+    {
+        try { (_, _games) = await ShortcutCheck.FactsAsync(); }
+        catch (Exception ex) { Log.Warn("No se pudieron leer los juegos instalados", ex); return; }
+        if (_open.Any(k => k.EndsWith("|" + StorageUsage.Games))) Render();
+    }
+
+    // ── Games not played for months ──
+
+    private static readonly TimeSpan Unused = TimeSpan.FromDays(90);
+
+    private void AddForgotten(StackPanel box, DriveUsage d)
+    {
+        var forgotten = GameCatalog.Forgotten(_games, DateTimeOffset.Now, Unused, 1L << 30)
+            .Where(g => string.Equals(Path.GetPathRoot(g.Folder)?.TrimEnd('\\'), d.Name, StringComparison.OrdinalIgnoreCase))
+            .Take(8).ToList();
+        if (forgotten.Count == 0) return;
+        var title = new TextBlock
+        {
+            Text = $"Sin jugar hace más de 3 meses ({Size(forgotten.Sum(g => g.Bytes))})",
+            FontSize = 12.5, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 4),
+        };
+        box.Children.Add(title);
+        foreach (var g in forgotten)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+            var uninstall = Ui.Pill("Desinstalar", () => Open(g.Uninstall!), glyph: Glyphs.Delete);
+            uninstall.ToolTip = "Abre el desinstalador de Steam (te pide confirmar)";
+            uninstall.Margin = new Thickness(8, 0, 0, 0);
+            SetDock(uninstall, Dock.Right);
+            row.Children.Add(uninstall);
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            text.Children.Add(new TextBlock { Text = $"{g.Name}  ·  {Size(g.Bytes)}", FontSize = 12.5, TextTrimming = TextTrimming.CharacterEllipsis });
+            text.Children.Add(Ui.Text("Última vez: " + g.LastPlayed!.Value.LocalDateTime.ToString("d 'de' MMMM 'de' yyyy", Ui.Culture)));
+            row.Children.Add(text);
+            box.Children.Add(row);
+        }
+    }
+
+    // ── Cleanup ──
+
+    /// <summary>Caches and temporary files that their programs rebuild on their own: safe to empty.</summary>
+    private static IEnumerable<(string Name, string Path)> CleanupCandidates()
+    {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        yield return ("Archivos temporales", Path.GetTempPath());
+        yield return ("Volcados de programas que fallaron", Path.Combine(local, "CrashDumps"));
+        yield return ("Informes de errores de Windows", Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"));
+        yield return ("Caché de npm", Path.Combine(local, "npm-cache"));
+        yield return ("Caché de Yarn", Path.Combine(local, @"Yarn\Cache"));
+        yield return ("Caché de pnpm", Path.Combine(local, "pnpm-cache"));
+        yield return ("Caché de pip", Path.Combine(local, @"pip\cache"));
+        yield return ("Caché de NuGet (descargas)", Path.Combine(local, @"NuGet\v3-cache"));
+        yield return ("Caché de Gradle", Path.Combine(profile, @".gradle\caches"));
+    }
+
+    private bool _cleanupOpen;
+    private List<(string Name, string Path, long Bytes)>? _cleanup;
+
+    private FrameworkElement CleanupSection()
+    {
+        var box = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var head = new DockPanel();
+        var toggle = Ui.IconButton(_cleanupOpen ? Glyphs.ChevronUp : Glyphs.ChevronDown, _cleanupOpen ? "Ocultar" : "Revisar", ToggleCleanup, 22);
+        SetDock(toggle, Dock.Right);
+        head.Children.Add(toggle);
+        head.Children.Add(new TextBlock { Text = "Limpieza sugerida", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+        box.Children.Add(head);
+        if (!_cleanupOpen)
+        {
+            box.Children.Add(Ui.Text("Temporales y cachés que sus programas vuelven a crear.", wrap: true));
+            return box;
+        }
+        if (_cleanup is null)
+        {
+            box.Children.Add(Ui.Text("Midiendo…"));
+            return box;
+        }
+        var worth = _cleanup.Where(c => c.Bytes >= 50L * 1024 * 1024).OrderByDescending(c => c.Bytes).ToList();
+        if (worth.Count == 0) box.Children.Add(Ui.Text("Nada que valga la pena limpiar ahora.", wrap: true));
+        foreach (var (name, path, bytes) in worth)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
+            var clean = Ui.Pill("Limpiar", () => Clean(name, path, bytes), glyph: Glyphs.Delete);
+            clean.Margin = new Thickness(8, 0, 0, 0);
+            SetDock(clean, Dock.Right);
+            row.Children.Add(clean);
+            var text = new TextBlock { Text = $"{name}  ·  {Size(bytes)}", FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = path };
+            row.Children.Add(text);
+            box.Children.Add(row);
+        }
+        return box;
+    }
+
+    private async void ToggleCleanup()
+    {
+        _cleanupOpen = !_cleanupOpen;
+        Render();
+        if (!_cleanupOpen || _cleanup is not null) return;
+        _cleanup = await Task.Run(() => CleanupCandidates()
+            .Where(c => Directory.Exists(c.Path))
+            .Select(c => (c.Name, c.Path, StorageScanner.Measure(c.Path)))
+            .ToList());
+        Render();
+    }
+
+    private async void Clean(string name, string path, long bytes)
+    {
+        var owner = Window.GetWindow(this);
+        var answer = MessageBox.Show(owner, $"¿Vaciar «{name}» ({Size(bytes)})?\n\n{path}\n\nSe borra lo que hay dentro; lo que esté en uso se deja. Su programa lo vuelve a crear cuando lo necesite.",
+            "SackSpace", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes) return;
+        var left = await Task.Run(() =>
+        {
+            foreach (var entry in new DirectoryInfo(path).EnumerateFileSystemInfos())
+            {
+                try
+                {
+                    // Directory.Delete removes a junction itself, never what it points to.
+                    if (entry is DirectoryInfo dir) dir.Delete(true);
+                    else entry.Delete();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // in use: stays
+            }
+            return StorageScanner.Measure(path);
+        });
+        var i = _cleanup?.FindIndex(c => c.Path == path) ?? -1;
+        if (i >= 0) _cleanup![i] = (name, path, left);
+        Render();
+        _c.Toast($"Liberados {Size(Math.Max(bytes - left, 0))} de «{name}».");
     }
 
     private TimeSpan? Interval => _c.Settings.GetString("interval", "1 día") switch
@@ -183,6 +319,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
         var drives = FromJson(_c.Settings["scan"]);
         foreach (var d in drives) _list.Children.Add(Drive(d));
         if (drives.Count == 0) _list.Children.Add(Ui.Text("La primera medición recorre todo el disco y tarda unos minutos; puedes seguir usando el PC.", wrap: true));
+        _list.Children.Add(CleanupSection());
     }
 
     private FrameworkElement Drive(DriveUsage d)
@@ -308,6 +445,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
         var items = d.Items.GetValueOrDefault(category) ?? [];
         foreach (var item in items) box.Children.Add(ItemRow(item, bytes, ColorOf(category)));
+        if (category == StorageUsage.Games) AddForgotten(box, d);
 
         var note = category switch
         {
@@ -641,6 +779,9 @@ internal static class StorageScanner
     private static extern uint GetCompressedFileSizeW(string path, out uint high);
 
     /// <summary>The bytes under a root (minus nested roots) and the entries its breakdown lists.</summary>
+    /// <summary>The bytes a folder takes on the disk, without a breakdown.</summary>
+    public static long Measure(string path) => Size(path, new StoragePlanItem("", path, [], Expand: false)).Bytes;
+
     private static (long Bytes, IReadOnlyList<StorageItem> Items) Size(string path, StoragePlanItem item)
     {
         try

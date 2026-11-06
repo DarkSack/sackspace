@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
+using SackSpace.Core.Widgets;
 
 namespace SackSpace.Interop;
 
@@ -60,6 +61,35 @@ internal static partial class GameLibraries
             catch (Exception ex) { Log.Warn($"Manifiesto de Epic ilegible: {f}", ex); }
         }
         return list;
+    }
+
+    /// <summary>Steam and Epic games installed now (tools included: callers filter with GameCatalog.IsTool).</summary>
+    public static IReadOnlyList<InstalledGame> InstalledGames(IReadOnlySet<string> startMenu)
+    {
+        var games = new List<InstalledGame>();
+        foreach (var lib in SteamLibraries() ?? [])
+        {
+            var apps = Path.Combine(lib, "steamapps");
+            if (!Directory.Exists(apps)) continue;
+            foreach (var f in Directory.EnumerateFiles(apps, "appmanifest_*.acf"))
+            {
+                try
+                {
+                    if (GameCatalog.ParseSteam(File.ReadAllText(f), lib, startMenu.Contains) is { } g) games.Add(g);
+                }
+                catch (IOException ex) { Log.Warn($"Manifiesto de Steam ilegible: {f}", ex); }
+            }
+        }
+        if (Directory.Exists(EpicManifests))
+            foreach (var f in Directory.EnumerateFiles(EpicManifests, "*.item"))
+            {
+                try
+                {
+                    if (JsonNode.Parse(File.ReadAllText(f)) is { } j && GameCatalog.ParseEpic(j) is { } g) games.Add(g);
+                }
+                catch (Exception ex) { Log.Warn($"Manifiesto de Epic ilegible: {f}", ex); }
+            }
+        return games.DistinctBy(g => g.Key).ToList();
     }
 
     public static IReadOnlySet<string>? EpicApps() =>

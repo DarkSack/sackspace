@@ -48,6 +48,7 @@ public static class BuiltInWidgets
     public const string Schedule = "schedule";
     public const string Usage = "aiusage";
     public const string Storage = "storage";
+    public const string Obs = "obs";
 
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
@@ -84,6 +85,7 @@ public static class BuiltInWidgets
             new("iconSize", "Tamaño de los iconos", WidgetSettingKind.Choice, "Mediano", ["Pequeño", "Mediano", "Grande"]),
             new("labels", "Mostrar nombres", WidgetSettingKind.Toggle, "true"),
             new("autoRemove", "Quitar solos los que se desinstalen o borren", WidgetSettingKind.Toggle, "true"),
+            new("autoAddGames", "Añadir solos los juegos que instales en Steam o Epic", WidgetSettingKind.Toggle, "false"),
         ]),
         new(Disks, "Discos", "Espacio libre en cada unidad.", Glyphs.Drive, 320, 180, 220, 110,
         [
@@ -93,6 +95,11 @@ public static class BuiltInWidgets
         [
             new("extra", @"Carpetas propias: Categoría=carpeta, separadas por ; (p. ej. Juegos=D:\JUEGOS; Desarrollo=E:\Dev)", WidgetSettingKind.Text, ""),
             new("interval", "Medir de nuevo cada", WidgetSettingKind.Choice, "1 día", ["6 h", "12 h", "1 día", "1 semana", "Solo a mano"]),
+        ]),
+        new(Obs, "OBS", "Si estás en directo o grabando, cuánto llevas, la subida y los cuadros perdidos, y botones para el directo, la grabación, la repetición y las escenas. Usa el servidor WebSocket de OBS en tu PC (Herramientas › Ajustes del servidor WebSocket).", Glyphs.Broadcast, 380, 260, 260, 150,
+        [
+            new("scenes", "Mostrar las escenas", WidgetSettingKind.Toggle, "true"),
+            new("confirmStream", "Preguntar antes de iniciar o terminar el directo", WidgetSettingKind.Toggle, "true"),
         ]),
         new(Network, "Red", "Velocidad de bajada y subida en tiempo real.", Glyphs.Network, 360, 160, 220, 120,
         [

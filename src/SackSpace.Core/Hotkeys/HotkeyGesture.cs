@@ -92,6 +92,7 @@ public static class HotkeyActions
     public const string Next = "next";
     public const string Previous = "previous";
     public const string Settings = "settings";
+    public const string Search = "search";
     public const int WorkspaceSlots = 9;
 
     public static string Workspace(int number) => "workspace" + number;
@@ -109,6 +110,7 @@ public static class HotkeyActions
             [Next] = "Ctrl+Alt+Right",
             [Previous] = "Ctrl+Alt+Left",
             [Settings] = "Ctrl+Alt+Shift+S",
+            [Search] = "Ctrl+Alt+Shift+F",
         };
         for (var i = 1; i <= WorkspaceSlots; i++) d[Workspace(i)] = $"Ctrl+Alt+Shift+{i}";
         return d;
@@ -121,6 +123,7 @@ public static class HotkeyActions
         Next => "Siguiente espacio",
         Previous => "Espacio anterior",
         Settings => "Abrir los ajustes",
+        Search => "Buscar y abrir una app, un juego o un acceso",
         _ when action.StartsWith("workspace", StringComparison.Ordinal) => $"Ir al espacio {action["workspace".Length..]}",
         _ => action,
     };

@@ -29,6 +29,12 @@ public partial class HostView : UserControl
     private readonly DispatcherTimer _snackTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private Canvas? _layer;
     private string? _workspaceId;
+    /// <summary>
+    /// Workspaces seen before, still built but collapsed: going back only shows them (building a
+    /// layer and rasterising it in software was most of a switch). Glass: the version they were drawn with.
+    /// </summary>
+    private readonly Dictionary<string, (Canvas Layer, int Glass)> _kept = new();
+    private int _glass;
     private WallpaperImage? _wallpaper;
     private Action? _snackAction;
 
@@ -90,11 +96,35 @@ public partial class HostView : UserControl
     public void ShowWorkspace(Workspace ws, int direction = 0, bool animate = false)
     {
         var old = _layer;
+        var oldId = _workspaceId;
         _workspaceId = ws.Id;
-        _layer = BuildLayer(ws);
+        if (_kept.Remove(ws.Id, out var kept) && kept.Layer != old)
+        {
+            _layer = kept.Layer;
+            _layer.Visibility = Visibility.Visible;
+            _layer.Opacity = 1;
+            // Catch up with what changed while it was hidden.
+            foreach (var p in Panels)
+            {
+                p.SetEditing(Manager.IsEditing);
+                if (kept.Glass != _glass) p.UpdateGlass();
+            }
+            ReloadIcons();
+        }
+        else
+        {
+            _layer = BuildLayer(ws);
+            Layers.Children.Add(_layer);
+        }
         if (animate && direction != 0 && Anim.Enabled) _layer.Opacity = 0;
-        Layers.Children.Add(_layer);
-        if (old is not null) Retire(old);
+        if (old is not null && old != _layer)
+        {
+            if (oldId is not null && oldId != ws.Id) Keep(oldId, old);
+            else Retire(old);
+        }
+        // A workspace deleted since: its layer goes.
+        foreach (var gone in _kept.Keys.Where(id => Services.Session.Config.Workspaces.All(w => w.Id != id)).ToList())
+            if (_kept.Remove(gone, out var g)) Retire(g.Layer);
         if (!animate) return;
         // Every frame of a full-screen layer is redrawn in software: one short fade, nothing sliding.
         if (direction != 0) Anim.Fade(_layer, 1, 160);
@@ -104,6 +134,7 @@ public partial class HostView : UserControl
     /// <summary>Rebuilds the current workspace's panels (after a move between monitors or an import).</summary>
     public void ReloadPanels()
     {
+        DropKept();
         var ws = CurrentWorkspace ?? Services.Session.Config.ActiveWorkspace;
         if (ws is not null) ShowWorkspace(ws);
     }
@@ -148,6 +179,18 @@ public partial class HostView : UserControl
         return host;
     }
 
+    private void Keep(string id, Canvas layer)
+    {
+        layer.Visibility = Visibility.Collapsed;
+        _kept[id] = (layer, _glass);
+    }
+
+    private void DropKept()
+    {
+        foreach (var (layer, _) in _kept.Values) Retire(layer);
+        _kept.Clear();
+    }
+
     private void Retire(Canvas old)
     {
         Layers.Children.Remove(old);
@@ -157,6 +200,7 @@ public partial class HostView : UserControl
     public void DisposeAll()
     {
         foreach (var p in Panels) p.DisposeWidget();
+        DropKept();
         Layers.Children.Clear();
         _layer = null;
         _snackTimer.Stop();
@@ -208,6 +252,7 @@ public partial class HostView : UserControl
         _wallpaper = Services.Wallpaper.Get(Monitor);
         BackdropBrush.ImageSource = _wallpaper.Blurred;
         BackdropBrush.Viewbox = GlassViewbox(new Rect(0, 0, AreaSize.Width, AreaSize.Height));
+        _glass++;
         foreach (var p in Panels) p.UpdateGlass();
         Bar?.UpdateGlass();
     }

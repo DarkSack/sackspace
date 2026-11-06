@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -23,6 +24,7 @@ public sealed class ShortcutsWidget : DockPanel
     private readonly bool _labels;
     private readonly bool _autoRemove;
     private HashSet<string> _gone = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<InstalledGame> _games = [];
 
     public ShortcutsWidget(WidgetContext c)
     {
@@ -55,20 +57,38 @@ public sealed class ShortcutsWidget : DockPanel
         CheckGone();
     }
 
-    /// <summary>Marks what was uninstalled or deleted; with autoRemove on, takes it out of the group.</summary>
+    /// <summary>
+    /// Marks what was uninstalled or deleted (with autoRemove on, takes it out of the group) and,
+    /// with autoAddGames on, adds the Steam and Epic games installed since the group last looked.
+    /// </summary>
     private async void CheckGone()
     {
         InstallFacts facts;
-        try { facts = await ShortcutCheck.FactsAsync(); }
+        try { (facts, _games) = await ShortcutCheck.FactsAsync(); }
         catch (Exception ex) { Log.Warn("No se pudo comprobar qué accesos siguen instalados", ex); return; }
         var gone = _items.Where(i => ShortcutPresence.Check(i.Path, facts) == Presence.Gone).ToList();
-        if (_autoRemove && gone.Count > 0)
+        if (_autoRemove && gone.Count > 0) RemoveGone(gone);
+        else
         {
-            RemoveGone(gone);
-            return;
+            _gone = gone.Select(i => i.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (_gone.Count > 0) Render();
         }
-        _gone = gone.Select(i => i.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (_gone.Count > 0) Render();
+        if (_c.Settings.GetBool("autoAddGames", false)) AddNewGames();
+    }
+
+    private HashSet<string> GameKeys() =>
+        _items.Select(i => GameCatalog.KeyOf(i.Path)).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private void AddNewGames()
+    {
+        var seen = (_c.Settings["seenGames"] as JsonArray)?.Select(n => n?.GetValue<string>() ?? "").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var (add, all) = GameCatalog.NewGames(_games, seen, GameKeys());
+        _c.Settings["seenGames"] = new JsonArray(all.Order().Select(k => (JsonNode)k).ToArray());
+        foreach (var g in add) _items.Add(new ShortcutItem(g.Name, g.LaunchPath));
+        if (add.Count > 0) Save();
+        else if (seen is null || seen.Count != all.Count) _c.Save();
+        if (add.Count > 0)
+            _c.Toast($"Añadidos a {Title}: " + string.Join(", ", add.Take(4).Select(g => g.Name)) + (add.Count > 4 ? $" y {add.Count - 4} más" : ""));
     }
 
     private void RemoveGone(IReadOnlyList<ShortcutItem> gone)
@@ -94,6 +114,18 @@ public sealed class ShortcutsWidget : DockPanel
             var dialog = new Microsoft.Win32.OpenFolderDialog { Multiselect = true, Title = "Elige carpetas para " + Title };
             if (dialog.ShowDialog(Window.GetWindow(this)) == true) Add(dialog.FolderNames);
         }));
+        var keys = GameKeys();
+        var missing = _games.Where(g => !keys.Contains(g.Key)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (missing.Count > 0)
+        {
+            var games = Ui.Item("Un juego instalado", Glyphs.Game, null);
+            foreach (var g in missing)
+            {
+                var item = Ui.Item(g.Bytes > 0 ? $"{g.Name}  ({StorageWidget.Size(g.Bytes)})" : g.Name, null, () => Add(g.Name, g.LaunchPath));
+                games.Items.Add(item);
+            }
+            menu.Items.Add(games);
+        }
         var gone = _items.Where(i => _gone.Contains(i.Path)).ToList();
         if (gone.Count > 0)
         {
@@ -201,15 +233,19 @@ public sealed class ShortcutsWidget : DockPanel
 /// <summary>What is installed, read at most once a minute for every Accesos panel.</summary>
 internal static class ShortcutCheck
 {
-    private static (Task<InstallFacts> Task, DateTime At)? _cached;
+    private static (Task<(InstallFacts, IReadOnlyList<InstalledGame>)> Task, DateTime At)? _cached;
 
-    public static Task<InstallFacts> FactsAsync()
+    public static Task<(InstallFacts Facts, IReadOnlyList<InstalledGame> Games)> FactsAsync()
     {
         if (_cached is { } c && (!c.Task.IsCompleted || DateTime.UtcNow - c.At < TimeSpan.FromMinutes(1))) return c.Task;
-        var task = Sta.Run(() => new InstallFacts(
-            InstalledApps.Ids(), GameLibraries.SteamGames(), GameLibraries.EpicApps(),
-            p => File.Exists(p) || Directory.Exists(p),
-            root => Directory.Exists(root)));
+        var task = Sta.Run(() =>
+        {
+            var ids = InstalledApps.Ids();
+            var facts = new InstallFacts(ids, GameLibraries.SteamGames(), GameLibraries.EpicApps(),
+                p => File.Exists(p) || Directory.Exists(p),
+                root => Directory.Exists(root));
+            return (facts, GameLibraries.InstalledGames(ids));
+        });
         _cached = (task, DateTime.UtcNow);
         return task;
     }

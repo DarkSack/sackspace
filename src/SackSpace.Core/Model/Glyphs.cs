@@ -51,6 +51,9 @@ public static class Glyphs
     public const string Drive = "\uEDA2";
     public const string Storage = "\uEB05";
     public const string Warning = "\uE7BA";
+    public const string Search = "\uE721";
+    public const string Broadcast = "\uE93E";
+    public const string Record = "\uE7C8";
     public const string Network = "\uE701";
     public const string Weather = "\uE706";
     public const string Timer = "\uE916";

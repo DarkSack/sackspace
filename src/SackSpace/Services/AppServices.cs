@@ -22,6 +22,8 @@ public sealed class AppServices
     /// <summary>The first-run setup (used by "Empezar de cero").</summary>
     public required Func<Core.Model.AppConfig> CreateDefault { get; init; }
     public HostManager Hosts { get; set; } = null!;
+    /// <summary>Null in --snapshot and --bench runs.</summary>
+    public UpdateService? Updates { get; set; }
     public HotkeyService? Hotkeys { get; set; }
     /// <summary>Actions whose shortcut could not be registered (taken by another app).</summary>
     public IReadOnlyList<string> FailedHotkeys { get; set; } = [];

@@ -116,6 +116,11 @@ public partial class App : Application
         s.Timers.Notify = _tray.Notify;
         _ = new AutoSwitcher(s);
         if (bench) _ = Bench();
+        else
+        {
+            s.Updates = new UpdateService(() => s.Session.Config.General.CheckUpdates);
+            s.Updates.Found += u => s.Hosts.PrimaryView?.ShowSnackbar($"Hay una versión nueva de SackSpace: {u.Version.ToString(3)}", "Instalar", () => InstallUpdate(u));
+        }
         ListenForSecondLaunch();
         SessionEnding += (_, _) => s.Session.Flush();
 
@@ -228,6 +233,41 @@ public partial class App : Application
         if (s.FailedHotkeys.Count > 0) Log.Warn("Atajos ocupados por otra app: " + string.Join(", ", s.FailedHotkeys));
     }
 
+    public async void InstallUpdate(UpdateInfo u)
+    {
+        var view = _s!.Hosts.PrimaryView;
+        view?.ShowSnackbar($"Descargando SackSpace {u.Version.ToString(3)}…");
+        try { await UpdateService.InstallAsync(u); }
+        catch (Exception ex)
+        {
+            Log.Warn("No se pudo instalar la actualización", ex);
+            view?.ShowSnackbar("No se pudo actualizar: " + ex.Message, "Ver la versión", () => InstalledApps.Launch(u.Page, out _));
+        }
+    }
+
+    /// <summary>Asked from the tray: says the result either way.</summary>
+    public async void CheckForUpdates()
+    {
+        var view = _s!.Hosts.PrimaryView;
+        if (_s.Updates is not { } updates) return;
+        try
+        {
+            if (await updates.CheckAsync(quiet: false) is { } u)
+                view?.ShowSnackbar($"Hay una versión nueva de SackSpace: {u.Version.ToString(3)}", "Instalar", () => InstallUpdate(u));
+            else view?.ShowSnackbar($"Tienes la última versión ({UpdateService.Running.ToString(3)}).");
+        }
+        catch (Exception) { view?.ShowSnackbar("No se pudo preguntar a GitHub. ¿Hay internet?"); }
+    }
+
+    /// <summary>Raises the panels and opens the search on the main screen; opening something lowers them again.</summary>
+    public void OpenSearch()
+    {
+        var hosts = _s!.Hosts;
+        if (hosts.PrimaryView is not { } view) return;
+        hosts.SetRaised(true);
+        view.OpenSheet(new SearchSheet(view, _s, () => hosts.SetRaised(false)));
+    }
+
     private void OnHotkey(string action)
     {
         var hosts = _s!.Hosts;
@@ -238,6 +278,7 @@ public partial class App : Application
             case HotkeyActions.Next: hosts.Next(); break;
             case HotkeyActions.Previous: hosts.Previous(); break;
             case HotkeyActions.Settings: hosts.OpenSettings(); break;
+            case HotkeyActions.Search: OpenSearch(); break;
             default:
                 if (action.StartsWith("workspace", StringComparison.Ordinal) && int.TryParse(action["workspace".Length..], out var n))
                     hosts.SwitchToNumber(n);

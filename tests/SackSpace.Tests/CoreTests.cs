@@ -785,6 +785,85 @@ public class ShortcutPresenceTests
     }
 }
 
+public class GameCatalogTests
+{
+    private const string Acf = """
+        "AppState"
+        {
+        	"appid"		"289070"
+        	"name"		"Sid Meier's Civilization VI"
+        	"installdir"		"Sid Meier's Civilization VI"
+        	"LastPlayed"		"1791589367"
+        	"SizeOnDisk"		"27533885031"
+        	"InstalledDepots"
+        	{
+        		"289071"
+        		{
+        			"size"		"19546523624"
+        		}
+        	}
+        }
+        """;
+
+    private static InstalledGame Game(string key, string name, long bytes = 1, DateTimeOffset? played = null) => new(key, name, "x", bytes, played, "", null);
+
+    [Fact]
+    public void Steam_manifest_gives_name_size_last_played_and_the_start_menu_link()
+    {
+        var g = GameCatalog.ParseSteam(Acf, @"E:\SteamLibrary", link => link == "steam://rungameid/289070")!;
+        Assert.Equal("steam:289070", g.Key);
+        Assert.Equal("Sid Meier's Civilization VI", g.Name);
+        Assert.Equal(27533885031, g.Bytes); // the depot's own "size" further down is not the game's
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1791589367), g.LastPlayed);
+        Assert.Equal(@"shell:AppsFolder\steam://rungameid/289070", g.LaunchPath);
+        Assert.Equal(@"E:\SteamLibrary\steamapps\common\Sid Meier's Civilization VI", g.Folder);
+        Assert.Equal("steam://rungameid/289070", GameCatalog.ParseSteam(Acf, "E:", _ => false)!.LaunchPath);
+        Assert.Equal("steam:289070", GameCatalog.KeyOf(g.LaunchPath));
+    }
+
+    [Fact]
+    public void Epic_engines_and_add_ons_are_not_games()
+    {
+        var game = JsonNode.Parse("""{"AppName":"Potoo","DisplayName":"Overcooked! 2","MainGameAppName":"Potoo","AppCategories":["public","games","applications"],"InstallSize":5000}""")!;
+        var dlc = JsonNode.Parse("""{"AppName":"94bc","DisplayName":"Contenido de LEGO Fortnite","MainGameAppName":"Fortnite","AppCategories":["addons"]}""")!;
+        var engine = JsonNode.Parse("""{"AppName":"UE_5.3","DisplayName":"Unreal Engine","MainGameAppName":"","AppCategories":["engines/ue5","engines"]}""")!;
+        Assert.Equal("epic:potoo", GameCatalog.ParseEpic(game)!.Key);
+        Assert.Equal("epic:potoo", GameCatalog.KeyOf("com.epicgames.launcher://apps/Potoo?action=launch&silent=true"));
+        Assert.Null(GameCatalog.ParseEpic(dlc));
+        Assert.Null(GameCatalog.ParseEpic(engine));
+    }
+
+    [Fact]
+    public void A_group_adds_only_games_installed_after_it_first_looked()
+    {
+        var installed = new[] { Game("steam:1", "Palworld"), Game("steam:2", "Wallpaper Engine"), Game("steam:3", "Hades") };
+        var (first, seen) = GameCatalog.NewGames(installed, null, new HashSet<string>());
+        Assert.Empty(first); // a curated group stays as it is
+        Assert.Equal(3, seen.Count);
+
+        var later = installed.Append(Game("steam:4", "Hollow Knight")).Append(Game("steam:5", "Some Game Dedicated Server")).ToList();
+        var (add, seen2) = GameCatalog.NewGames(later, seen, new HashSet<string>());
+        Assert.Equal(["Hollow Knight"], add.Select(g => g.Name));
+        Assert.Equal(5, seen2.Count);
+        Assert.Empty(GameCatalog.NewGames(later, seen2, new HashSet<string>()).Add); // removed by hand later: never back
+    }
+
+    [Fact]
+    public void Forgotten_games_are_big_old_and_were_played_at_least_once()
+    {
+        var now = new DateTimeOffset(2026, 11, 6, 0, 0, 0, TimeSpan.Zero);
+        var games = new[]
+        {
+            Game("steam:1", "Conan Exiles", 60, now.AddDays(-200)),
+            Game("steam:2", "Marvel Rivals", 100, now.AddDays(-2)),
+            Game("steam:3", "Recién instalado", 90),
+            Game("steam:4", "Pequeño", 1, now.AddDays(-400)),
+            Game("steam:5", "Grande", 80, now.AddDays(-100)),
+        };
+        Assert.Equal(["Grande", "Conan Exiles"], GameCatalog.Forgotten(games, now, TimeSpan.FromDays(90), 10).Select(g => g.Name));
+    }
+}
+
 public class StorageUsageTests
 {
     [Fact]
@@ -843,5 +922,53 @@ public class StorageUsageTests
 
         var spread = StorageUsage.TopItems(@"C:\Windows", 100, new Dictionary<string, long> { ["System32"] = 50, ["WinSxS"] = 50 }, inner, take: 1);
         Assert.Single(spread);
+    }
+}
+
+public class ObsNumbersTests
+{
+    [Fact]
+    public void Bitrate_dropped_frames_and_clock()
+    {
+        var t0 = new DateTime(2026, 11, 6, 12, 0, 0);
+        Assert.Equal(6.0, ObsNumbers.Megabits(0, t0, 1_500_000, t0.AddSeconds(2)));
+        Assert.Null(ObsNumbers.Megabits(5_000, t0, 10, t0.AddSeconds(2))); // the stream restarted
+        Assert.Equal(0.5, ObsNumbers.Dropped(5, 1000));
+        Assert.Equal(0, ObsNumbers.Dropped(5, 0));
+        Assert.Equal("1:23:45", ObsNumbers.Clock("01:23:45.678"));
+        Assert.Equal("4:05", ObsNumbers.Clock("00:04:05.000"));
+        Assert.Equal("", ObsNumbers.Clock(null));
+    }
+
+    [Fact]
+    public void Auth_matches_the_obs_websocket_example()
+    {
+        // obs-websocket 5 protocol docs: password "supersecretpassword", salt and challenge from its example.
+        Assert.Equal("1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=",
+            ObsClient.Auth("supersecretpassword", "lM1GncleQOaCu9lT1yeUZhFYnqhsLLP1G5lAGo3ixaI=", "+IxH4CnCiqpX1rM9scsNynZzbOe4KhDeYcTNS3PDaeY="));
+    }
+}
+
+public class UpdatesTests
+{
+    private static JsonNode Release(string tag, bool pre = false, string url = "https://github.com/DarkSack/sackspace/releases/download/v0.4.0/SackSpace-Setup-0.4.0.exe") =>
+        JsonNode.Parse($$"""
+            {"tag_name":"{{tag}}","draft":false,"prerelease":{{(pre ? "true" : "false")}},"html_url":"https://github.com/DarkSack/sackspace/releases/tag/{{tag}}",
+             "assets":[{"name":"notas.txt","browser_download_url":"https://github.com/DarkSack/sackspace/x"},
+                       {"name":"SackSpace-Setup-0.4.0.exe","browser_download_url":"{{url}}","digest":"sha256:ABCDEF"}]}
+            """)!;
+
+    [Fact]
+    public void Only_a_newer_full_release_with_its_installer_is_offered()
+    {
+        var u = Updates.Newer(Release("v0.4.0"), new Version(0, 3, 0, 0))!;
+        Assert.Equal(new Version(0, 4, 0), u.Version);
+        Assert.Equal("SackSpace-Setup-0.4.0.exe", u.InstallerName);
+        Assert.Equal("abcdef", u.Sha256);
+        Assert.Null(Updates.Newer(Release("v0.4.0"), new Version(0, 4, 0, 0))); // the same, with the build number the exe carries
+        Assert.Null(Updates.Newer(Release("v0.3.9"), new Version(0, 4, 0)));
+        Assert.Null(Updates.Newer(Release("v0.5.0", pre: true), new Version(0, 4, 0)));
+        Assert.Null(Updates.Newer(Release("v0.5.0", url: "https://evil.example/SackSpace-Setup-0.5.0.exe"), new Version(0, 4, 0)));
+        Assert.Null(Updates.ParseTag("nightly"));
     }
 }

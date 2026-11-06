@@ -60,8 +60,13 @@ public sealed class TrayIcon : IDisposable
             menu.Items.Add(Ui.Item(ws.Name, ws.Icon, () => hosts.SwitchTo(ws.Id), ws.Id == _s.Session.Config.ActiveWorkspace?.Id));
         menu.Items.Add(new Separator());
         menu.Items.Add(Ui.Item(hosts.IsRaised ? "Bajar los paneles" : "Ver los paneles encima", Glyphs.View, hosts.ToggleRaised));
+        menu.Items.Add(Ui.Item("Buscar y abrir…", Glyphs.Search, () => ((App)Application.Current).OpenSearch()));
         menu.Items.Add(Ui.Item("Editar el diseño", Glyphs.Edit, () => hosts.SetEditing(true)));
         menu.Items.Add(Ui.Item("Ajustes", Glyphs.Settings, () => hosts.OpenSettings()));
+        var app = (App)Application.Current;
+        menu.Items.Add(_s.Updates?.Available is { } update
+            ? Ui.Item($"Actualizar a la {update.Version.ToString(3)}", Glyphs.Refresh, () => app.InstallUpdate(update))
+            : Ui.Item("Buscar actualizaciones", Glyphs.Refresh, app.CheckForUpdates));
         menu.Items.Add(new Separator());
         menu.Items.Add(Ui.Item("Salir de SackSpace", Glyphs.Power, _exit));
         // The menu only closes on an outside click if our process is in the foreground.

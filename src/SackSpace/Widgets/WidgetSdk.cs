@@ -75,5 +75,6 @@ public static class WidgetRegistry
         Register(new WidgetFactory(D(BuiltInWidgets.Schedule), c => new ScheduleWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Usage), c => new AiUsageWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Storage), c => new StorageWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Obs), c => new ObsWidget(c)));
     }
 }

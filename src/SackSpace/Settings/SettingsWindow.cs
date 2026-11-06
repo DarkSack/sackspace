@@ -281,6 +281,8 @@ public sealed class SettingsWindow : Window
             Toggle(g.PauseInFullscreen, v => { g.PauseInFullscreen = v; Notify(ChangeKind.General); }));
         Card("Descansar detrás de ventanas maximizadas", "Una pantalla tapada por una ventana maximizada o a pantalla completa deja de dibujar sus paneles hasta que se despeje. Ahorra procesador; no cambia nada de lo que ves.",
             Toggle(g.RestBehindWindows, v => { g.RestBehindWindows = v; Notify(ChangeKind.General); }));
+        Card("Buscar actualizaciones", "Una vez al día pregunta a GitHub si hay una versión nueva y te avisa; nada se instala sin que lo pidas. Es lo único que sale a internet aparte de los widgets de Clima y Uso de IA.",
+            Toggle(g.CheckUpdates, v => { g.CheckUpdates = v; Notify(ChangeKind.General); }));
         Card("Bloquear el diseño", "Mantener pulsado un panel ya no lo pone en modo edición, para no moverlo sin querer. El lápiz de la barra y el atajo siguen funcionando.",
             Toggle(g.LockLayout, v => { g.LockLayout = v; Notify(ChangeKind.General); }));
 
@@ -751,7 +753,7 @@ public sealed class SettingsWindow : Window
         var path = new TextBox { Text = _s.DataFolder, IsReadOnly = true, Style = Ui.Style("GlassTextBox"), FontSize = 12.5, Margin = new Thickness(0, 8, 0, 0) };
         path.SetResourceReference(ForegroundProperty, "TextSecondaryBrush");
         Card("Todo se queda en este equipo",
-            "SackSpace no tiene cuentas ni envía estadísticas. Solo salen a internet el widget de Clima, a Open-Meteo con la ciudad que escribas, y el de Uso de IA, a Anthropic con tu sesión de Claude Code. Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
+            "SackSpace no tiene cuentas ni envía estadísticas. Solo salen a internet el widget de Clima, a Open-Meteo con la ciudad que escribas; el de Uso de IA, a Anthropic con tu sesión de Claude Code; y, una vez al día, la pregunta a GitHub de si hay versión nueva (se apaga en General). Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
             null, path);
 
         var tools = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };

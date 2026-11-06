@@ -41,6 +41,8 @@ public sealed class GeneralSettings
     public bool LockLayout { get; set; }
     /// <summary>A screen covered by a maximized window stops drawing its panels (nobody sees them).</summary>
     public bool RestBehindWindows { get; set; } = true;
+    /// <summary>Once a day, ask GitHub whether a newer SackSpace was published.</summary>
+    public bool CheckUpdates { get; set; } = true;
 }
 
 public enum AccentMode
