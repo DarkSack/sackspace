@@ -1,4 +1,4 @@
-﻿﻿# Builds dist\SackSpace.exe: one self-contained file (the PC needs no .NET installed),
+﻿# Builds dist\SackSpace.exe: one self-contained file (the PC needs no .NET installed),
 # then the wizard dist\SackSpace-Setup-<version>.exe.
 # Usage: .\publish.ps1                 tests, exe and wizard (on this PC)
 #        .\publish.ps1 -NoInstaller    tests and exe only (CI: the exe is signed before it goes into the wizard)
