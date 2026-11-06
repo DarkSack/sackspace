@@ -55,4 +55,15 @@ La arquitectura está en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
 ## Licencia
 
-SackSpace es gratis: puedes usarlo en todos tus equipos, pero no venderlo ni distribuir versiones modificadas. Las condiciones completas y la privacidad están en [installer/LICENCIA.txt](installer/LICENCIA.txt), el mismo texto que muestra el instalador.
+SackSpace es gratis y de código abierto, con [licencia MIT](LICENSE). Si publicas una versión modificada, ponle otro nombre. Las condiciones de uso y la privacidad están en [installer/LICENCIA.txt](installer/LICENCIA.txt), el mismo texto que muestra el instalador.
+
+## Política de firma de código
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+- Los instaladores oficiales se compilan en GitHub Actions ([.github/workflows/build.yml](.github/workflows/build.yml)) a partir del código de este repositorio; primero se firma `SackSpace.exe` y luego el instalador que lo contiene. Lo que no salga de ese workflow no está firmado por el proyecto.
+- Autores y revisores (committers and reviewers): [DarkSack](https://github.com/DarkSack).
+- Aprobación de cada firma (approvers): [DarkSack](https://github.com/DarkSack).
+- Todos usan verificación en dos pasos en GitHub y en SignPath.
+
+**Privacidad.** SackSpace no envía nada a otros sistemas salvo lo que pides tú: el widget de Clima (la ciudad que escribas, a Open-Meteo), el de Uso de IA (tu sesión de Claude Code, a Anthropic) y la búsqueda diaria de actualizaciones (pregunta a api.github.com por la última versión; se apaga en Ajustes › General). Detalles en [installer/LICENCIA.txt](installer/LICENCIA.txt).

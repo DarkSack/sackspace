@@ -1,0 +1,107 @@
+# Builds, tests and packages SackSpace on GitHub. Once the SignPath project exists
+# (repository variable SIGNPATH_ORGANIZATION_ID and secret SIGNPATH_API_TOKEN), the exe
+# is signed before it goes into the wizard, and then the wizard itself is signed.
+# A v* tag also creates a draft Release with the signed wizard.
+name: Compilar y firmar
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # the draft Release on tags
+  actions: read   # SignPath reads the job and downloads the artifact
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && github.event_name != 'pull_request' }}
+      SIGNPATH_PROJECT: sackspace
+      SIGNPATH_POLICY: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Pruebas y exe
+        shell: pwsh
+        run: ./publish.ps1 -NoInstaller
+
+      - name: Subir el exe sin firmar
+        id: exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: exe-sin-firmar
+          path: dist/SackSpace.exe
+          if-no-files-found: error
+
+      - name: Firmar el exe (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: exe
+          github-artifact-id: ${{ steps.exe.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-exe
+
+      - name: Usar el exe firmado
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Copy-Item signed-exe/SackSpace.exe dist/SackSpace.exe -Force
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Instalador
+        shell: pwsh
+        run: ./publish.ps1 -InstallerOnly
+
+      - name: Subir el instalador sin firmar
+        id: setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-sin-firmar
+          path: dist/SackSpace-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Firmar el instalador (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-setup
+
+      - name: Subir el instalador final
+        uses: actions/upload-artifact@v4
+        with:
+          name: SackSpace
+          path: ${{ env.SIGN == 'true' && 'signed-setup/SackSpace-Setup-*.exe' || 'dist/SackSpace-Setup-*.exe' }}
+          if-no-files-found: error
+
+      - name: Borrador de la Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $setup = Get-ChildItem $(if ($env:SIGN -eq 'true') { 'signed-setup' } else { 'dist' }) -Filter 'SackSpace-Setup-*.exe' | Select-Object -First 1
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash
+          gh release create $env:GITHUB_REF_NAME $setup.FullName --draft --title "SackSpace $($env:GITHUB_REF_NAME.TrimStart('v'))" --notes "SHA-256 del instalador: ``$hash``"

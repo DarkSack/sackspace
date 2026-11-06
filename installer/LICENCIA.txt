@@ -1,15 +1,15 @@
 ﻿CONDICIONES DE USO Y PRIVACIDAD DE SACKSPACE
-Revisado: 4 de noviembre de 2026
+Revisado: 6 de noviembre de 2026
 
 Responsable: Johan Jafet Del Valle Santiago (Sackito). Contacto: donsackito@protonmail.com
 
 LO CORTO
 SackSpace organiza tu escritorio de Windows en espacios con paneles y widgets. Funciona en tu PC, sin cuenta, sin anuncios y sin estadísticas de uso. Solo salen a internet los widgets de Clima y de Uso de IA, si los añades, y la búsqueda diaria de actualizaciones en GitHub, que puedes apagar.
 
-1. LICENCIA DE USO
-- SackSpace es gratis. Puedes instalarlo y usarlo en todos los equipos que quieras, también las versiones futuras.
-- No puedes venderlo, alquilarlo ni cobrar por él, ni distribuir copias modificadas.
-- No lo presentes como propio. SackSpace, su nombre y su icono son de Sackito.
+1. LICENCIA
+- SackSpace es gratis y de código abierto, con licencia MIT: puedes usarlo, copiarlo, modificarlo y redistribuirlo, siempre que conserves el aviso de copyright y la licencia. El texto completo está en el archivo LICENSE, junto al programa y en github.com/DarkSack/sackspace.
+- El nombre «SackSpace» y su icono identifican el proyecto original: si publicas una versión modificada, ponle otro nombre.
+- Los instaladores oficiales se compilan en GitHub a partir del código publicado y se firman con SignPath.
 
 2. GARANTÍA Y RESPONSABILIDAD
 - SackSpace se entrega tal cual. Hacemos lo posible por que funcione bien en las versiones de Windows que soporta y por arreglar lo que se rompa, pero no garantizamos que funcione sin fallos.

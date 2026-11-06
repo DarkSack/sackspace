@@ -47,6 +47,7 @@ Name: "autostart"; Description: "Iniciar SackSpace con Windows"; GroupDescriptio
 
 [Files]
 Source: "{#SourceExe}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\SackSpace"; Filename: "{app}\{#AppExe}"
