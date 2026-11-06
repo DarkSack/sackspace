@@ -13,13 +13,13 @@ foreach ($name in 'SIGNPATH_API_TOKEN', 'SIGNPATH_ORGANIZATION_ID', 'SIGNPATH_PR
     if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Falta la variable de entorno $name" }
 }
 
-$file = Get-Item $File
+$item = Get-Item $File
 $work = Join-Path ([IO.Path]::GetTempPath()) ("signpath-" + [guid]::NewGuid())
 New-Item -ItemType Directory $work | Out-Null
 $unsigned = Join-Path $work 'unsigned.zip'
 $signed = Join-Path $work 'signed.zip'
 
-Compress-Archive -Path $file.FullName -DestinationPath $unsigned
+Compress-Archive -Path $item.FullName -DestinationPath $unsigned
 Submit-SigningRequest `
     -InputArtifactPath $unsigned `
     -ApiToken $env:SIGNPATH_API_TOKEN `
@@ -31,10 +31,10 @@ Submit-SigningRequest `
     -WaitForCompletion
 
 Expand-Archive -Path $signed -DestinationPath (Join-Path $work 'out')
-Copy-Item (Join-Path $work "out/$($file.Name)") $file.FullName -Force
+Copy-Item (Join-Path $work "out/$($item.Name)") $item.FullName -Force
 Remove-Item $work -Recurse -Force
 
 # The test certificate is not trusted by Windows, so only check that a signature is there.
-$signature = Get-AuthenticodeSignature $file.FullName
-if (-not $signature.SignerCertificate) { throw "$($file.Name) volvio de SignPath sin firma" }
-"$($file.Name) firmado por $($signature.SignerCertificate.Subject) ($($signature.Status))"
+$signature = Get-AuthenticodeSignature $item.FullName
+if (-not $signature.SignerCertificate) { throw "$($item.Name) volvio de SignPath sin firma" }
+"$($item.Name) firmado por $($signature.SignerCertificate.Subject) ($($signature.Status))"
