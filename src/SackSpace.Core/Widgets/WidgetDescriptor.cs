@@ -47,6 +47,7 @@ public static class BuiltInWidgets
     public const string Timer = "timer";
     public const string Schedule = "schedule";
     public const string Usage = "aiusage";
+    public const string Storage = "storage";
 
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
@@ -82,10 +83,15 @@ public static class BuiltInWidgets
             new("title", "Título", WidgetSettingKind.Text, "Accesos"),
             new("iconSize", "Tamaño de los iconos", WidgetSettingKind.Choice, "Mediano", ["Pequeño", "Mediano", "Grande"]),
             new("labels", "Mostrar nombres", WidgetSettingKind.Toggle, "true"),
+            new("autoRemove", "Quitar solos los que se desinstalen o borren", WidgetSettingKind.Toggle, "true"),
         ]),
         new(Disks, "Discos", "Espacio libre en cada unidad.", Glyphs.Drive, 320, 180, 220, 110,
         [
             new("removable", "Incluir memorias USB", WidgetSettingKind.Toggle, "true"),
+        ]),
+        new(Storage, "Almacenamiento", "En qué se te va el espacio de cada disco: juegos, sistema, programas, fotos, archivos… Se mide en tu PC una vez al día o al pulsar actualizar.", Glyphs.Storage, 380, 330, 260, 180,
+        [
+            new("extra", @"Carpetas propias: Categoría=carpeta, separadas por ; (p. ej. Juegos=D:\JUEGOS; Desarrollo=E:\Dev)", WidgetSettingKind.Text, ""),
         ]),
         new(Network, "Red", "Velocidad de bajada y subida en tiempo real.", Glyphs.Network, 360, 160, 220, 120,
         [

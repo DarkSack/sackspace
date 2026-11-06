@@ -21,6 +21,8 @@ public sealed class ShortcutsWidget : DockPanel
     private readonly WrapPanel _tiles = new();
     private readonly double _icon;
     private readonly bool _labels;
+    private readonly bool _autoRemove;
+    private HashSet<string> _gone = new(StringComparer.OrdinalIgnoreCase);
 
     public ShortcutsWidget(WidgetContext c)
     {
@@ -28,6 +30,7 @@ public sealed class ShortcutsWidget : DockPanel
         _items = ShortcutItem.ReadAll(c.Settings);
         _icon = c.Settings.GetString("iconSize", "Mediano") switch { "Pequeño" => 28, "Grande" => 48, _ => 36 };
         _labels = c.Settings.GetBool("labels", true);
+        _autoRemove = c.Settings.GetBool("autoRemove", true);
 
         var add = Ui.IconButton(Glyphs.Add, "Añadir", () => { }, 28);
         add.Click += (_, _) => AddMenu(add).IsOpen = true;
@@ -49,6 +52,32 @@ public sealed class ShortcutsWidget : DockPanel
             e.Handled = true;
         };
         Render();
+        CheckGone();
+    }
+
+    /// <summary>Marks what was uninstalled or deleted; with autoRemove on, takes it out of the group.</summary>
+    private async void CheckGone()
+    {
+        InstallFacts facts;
+        try { facts = await ShortcutCheck.FactsAsync(); }
+        catch (Exception ex) { Log.Warn("No se pudo comprobar qué accesos siguen instalados", ex); return; }
+        var gone = _items.Where(i => ShortcutPresence.Check(i.Path, facts) == Presence.Gone).ToList();
+        if (_autoRemove && gone.Count > 0)
+        {
+            RemoveGone(gone);
+            return;
+        }
+        _gone = gone.Select(i => i.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (_gone.Count > 0) Render();
+    }
+
+    private void RemoveGone(IReadOnlyList<ShortcutItem> gone)
+    {
+        foreach (var i in gone) _items.Remove(i);
+        _gone.Clear();
+        Save();
+        var names = string.Join(", ", gone.Take(4).Select(i => i.Name)) + (gone.Count > 4 ? $" y {gone.Count - 4} más" : "");
+        _c.Toast($"Quitados de {Title} porque ya no están: {names}");
     }
 
     private ContextMenu AddMenu(UIElement target)
@@ -65,6 +94,12 @@ public sealed class ShortcutsWidget : DockPanel
             var dialog = new Microsoft.Win32.OpenFolderDialog { Multiselect = true, Title = "Elige carpetas para " + Title };
             if (dialog.ShowDialog(Window.GetWindow(this)) == true) Add(dialog.FolderNames);
         }));
+        var gone = _items.Where(i => _gone.Contains(i.Path)).ToList();
+        if (gone.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Ui.Item($"Quitar los que ya no están ({gone.Count})", Glyphs.Delete, () => RemoveGone(gone)));
+        }
         return menu;
     }
 
@@ -121,13 +156,13 @@ public sealed class ShortcutsWidget : DockPanel
         }
 
         var face = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(4), Child = stack, Width = width, Background = Brushes.Transparent };
-        var exists = InstalledApps.Exists(item.Path);
+        var exists = !_gone.Contains(item.Path) && InstalledApps.Exists(item.Path);
         var tile = new Button
         {
             Content = face,
             Template = GallerySheet.BareButton(),
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = exists ? item.Name : $"No se encuentra: {item.Path}",
+            ToolTip = exists ? item.Name : $"Ya no está instalado o no se encuentra: {item.Path}",
             Opacity = exists ? 1 : 0.45,
         };
         tile.MouseEnter += (_, _) => face.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
@@ -160,6 +195,23 @@ public sealed class ShortcutsWidget : DockPanel
     {
         try { image.Source = await ShellIcons.GetAsync(path, (int)Math.Round(_icon * _c.Scale)); }
         catch (Exception ex) { Log.Warn($"Sin icono para '{path}'", ex); }
+    }
+}
+
+/// <summary>What is installed, read at most once a minute for every Accesos panel.</summary>
+internal static class ShortcutCheck
+{
+    private static (Task<InstallFacts> Task, DateTime At)? _cached;
+
+    public static Task<InstallFacts> FactsAsync()
+    {
+        if (_cached is { } c && (!c.Task.IsCompleted || DateTime.UtcNow - c.At < TimeSpan.FromMinutes(1))) return c.Task;
+        var task = Sta.Run(() => new InstallFacts(
+            InstalledApps.Ids(), GameLibraries.SteamGames(), GameLibraries.EpicApps(),
+            p => File.Exists(p) || Directory.Exists(p),
+            root => Directory.Exists(root)));
+        _cached = (task, DateTime.UtcNow);
+        return task;
     }
 }
 

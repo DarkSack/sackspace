@@ -740,3 +740,77 @@ public class AiUsageTests
         Assert.Equal(new UsageWindow(0, null), w.At(new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero)));
     }
 }
+
+public class ShortcutPresenceTests
+{
+    private static InstallFacts Facts(string[]? steam = null, string[]? epic = null, string[]? menu = null, string[]? files = null, bool driveReady = true) => new(
+        menu?.ToHashSet(StringComparer.OrdinalIgnoreCase),
+        steam?.ToHashSet(),
+        epic?.ToHashSet(StringComparer.OrdinalIgnoreCase),
+        p => files?.Contains(p, StringComparer.OrdinalIgnoreCase) == true,
+        _ => driveReady);
+
+    [Fact]
+    public void Steam_games_are_checked_against_the_manifests_not_the_start_menu()
+    {
+        const string path = @"shell:AppsFolder\steam://rungameid/2357570";
+        var menu = new[] { "steam://rungameid/2357570" }; // Steam leaves this behind on uninstall
+        Assert.Equal(Presence.Gone, ShortcutPresence.Check(path, Facts(steam: ["289070"], menu: menu)));
+        Assert.Equal(Presence.Here, ShortcutPresence.Check(path, Facts(steam: ["2357570"])));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check(path, Facts(steam: null)));
+        Assert.Equal("440", ShortcutPresence.SteamGameId("steam://run/440"));
+    }
+
+    [Fact]
+    public void Epic_links_use_the_app_name()
+    {
+        Assert.Equal("Potoo", ShortcutPresence.EpicAppName("com.epicgames.launcher://apps/Potoo?action=launch&silent=true"));
+        Assert.Equal("Fortnite", ShortcutPresence.EpicAppName("com.epicgames.launcher://apps/fn%3A4fe75bbc%3AFortnite?action=launch"));
+        var path = "com.epicgames.launcher://apps/Heather?action=launch&silent=true";
+        Assert.Equal(Presence.Gone, ShortcutPresence.Check(path, Facts(epic: ["Potoo"])));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check(path, Facts()));
+    }
+
+    [Fact]
+    public void Start_menu_apps_files_and_unplugged_drives()
+    {
+        Assert.Equal(Presence.Here, ShortcutPresence.Check(@"shell:AppsFolder\Microsoft.VisualStudioCode", Facts(menu: ["Microsoft.VisualStudioCode"])));
+        Assert.Equal(Presence.Gone, ShortcutPresence.Check(@"shell:AppsFolder\Kiro", Facts(menu: ["Microsoft.VisualStudioCode"])));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check(@"shell:AppsFolder\Kiro", Facts(menu: []))); // the list could not be read
+        Assert.Equal(Presence.Here, ShortcutPresence.Check(@"D:\JUEGOS\PokeMMO\PokeMMO.exe", Facts(files: [@"D:\JUEGOS\PokeMMO\PokeMMO.exe"])));
+        Assert.Equal(Presence.Gone, ShortcutPresence.Check(@"D:\JUEGOS\Hytale\hytale.exe", Facts()));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check(@"F:\Juego\juego.exe", Facts(driveReady: false)));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check("shell:Downloads", Facts()));
+        Assert.Equal(Presence.Unknown, ShortcutPresence.Check("battlenet://Pro", Facts()));
+    }
+}
+
+public class StorageUsageTests
+{
+    [Fact]
+    public void Nested_roots_are_skipped_by_their_parent_and_later_duplicates_win()
+    {
+        var plan = StorageUsage.Plan(
+        [
+            new(StorageUsage.Programs, @"C:\Program Files (x86)"),
+            new(StorageUsage.Games, @"C:\Program Files (x86)\Steam\steamapps\"),
+            new(StorageUsage.Games, @"D:\JUEGOS"),
+            new("Desarrollo", @"d:\juegos"),
+            new(StorageUsage.Programs, @"C:\Program Files"), // a prefix of "Program Files (x86)" but not its parent
+        ]);
+        Assert.Equal(4, plan.Count);
+        var x86 = plan.Single(p => p.Path == @"C:\Program Files (x86)");
+        Assert.Equal([@"C:\Program Files (x86)\Steam\steamapps"], x86.Skip);
+        Assert.Empty(plan.Single(p => p.Path == @"C:\Program Files").Skip);
+        Assert.Equal("Desarrollo", plan.Single(p => p.Path.Equals(@"D:\JUEGOS", StringComparison.OrdinalIgnoreCase)).Category);
+    }
+
+    [Fact]
+    public void Summary_adds_up_categories_and_leaves_the_rest_unclassified()
+    {
+        var parts = StorageUsage.Summarize(1000, [(StorageUsage.Games, 300), (StorageUsage.System, 100), (StorageUsage.Games, 200), (StorageUsage.Trash, 0)]);
+        Assert.Equal([(StorageUsage.Games, 500L), (StorageUsage.Other, 400L), (StorageUsage.System, 100L)], parts.OrderByDescending(p => p.Bytes).ToList());
+        Assert.DoesNotContain(StorageUsage.Summarize(100, [(StorageUsage.System, 150)]), p => p.Category == StorageUsage.Other); // hard links can pass the used space
+        Assert.Equal(StorageUsage.Other, parts[^1].Category); // unclassified goes last, after the sorted categories
+    }
+}

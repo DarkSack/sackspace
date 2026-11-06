@@ -13,7 +13,20 @@ public sealed record InstalledApp(string Name, string ParsingName);
 /// </summary>
 internal static class InstalledApps
 {
-    public static IReadOnlyList<InstalledApp> List()
+    public static IReadOnlyList<InstalledApp> List() =>
+        Raw().Where(a => !IsNoise(a.Name, a.ParsingName[AppsFolder.Length..]))
+            .GroupBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    /// <summary>Every entry's path after shell:AppsFolder\, duplicates and noise included (to tell if a shortcut still exists).</summary>
+    public static IReadOnlySet<string> Ids() =>
+        Raw().Select(a => a.ParsingName[AppsFolder.Length..]).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private const string AppsFolder = @"shell:AppsFolder\";
+
+    private static List<InstalledApp> Raw()
     {
         var result = new List<InstalledApp>();
         try
@@ -27,19 +40,14 @@ internal static class InstalledApps
                 string name = item.Name;
                 string path = item.Path;
                 if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path)) continue;
-                if (IsNoise(name, path)) continue;
-                result.Add(new InstalledApp(name, @"shell:AppsFolder\" + path));
+                result.Add(new InstalledApp(name, AppsFolder + path));
             }
         }
         catch (Exception ex)
         {
             Log.Warn("No se pudo leer la lista de apps", ex);
         }
-        return result
-            .GroupBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(g => g.First())
-            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        return result;
     }
 
     /// <summary>The first app whose name matches (exactly, then by prefix).</summary>
