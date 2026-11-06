@@ -163,7 +163,7 @@ public partial class HostView : UserControl
     private PanelHost MakeHost(PanelState panel)
     {
         var descriptor = WidgetRegistry.Find(panel.Widget)?.Descriptor
-            ?? new WidgetDescriptor(panel.Widget, "Widget no disponible", "", Glyphs.Info, 300, 200, 160, 110, []);
+            ?? new WidgetDescriptor(panel.Widget, Loc.T("Widget no disponible"), "", Glyphs.Info, 300, 200, 160, 110, []);
         var host = new PanelHost(panel, descriptor, this);
         // Off-screen after a resolution change: drawn inside, saved only if the user moves it.
         host.Place(LayoutMath.Clamp(panel.Bounds, new Rect(0, 0, AreaSize.Width, AreaSize.Height)));
@@ -326,7 +326,7 @@ public partial class HostView : UserControl
         p.Panel.Hidden = true;
         Services.Session.MarkDirty();
         DropPanel(p);
-        ShowSnackbar($"«{p.Descriptor.Name}» oculto. Lo tienes en «Añadir widget».", "Deshacer", () =>
+        ShowSnackbar(Loc.T("«{0}» oculto. Lo tienes en «Añadir widget».", p.Descriptor.Name), "Deshacer", () =>
         {
             p.Panel.Hidden = false;
             Services.Session.MarkDirty();
@@ -342,7 +342,7 @@ public partial class HostView : UserControl
         ws.Panels.Remove(p.Panel);
         Services.Session.MarkDirty();
         DropPanel(p);
-        ShowSnackbar($"«{p.Descriptor.Name}» quitado.", "Deshacer", () =>
+        ShowSnackbar(Loc.T("«{0}» quitado.", p.Descriptor.Name), "Deshacer", () =>
         {
             ws.Panels.Insert(Math.Clamp(index, 0, ws.Panels.Count), p.Panel);
             Services.Session.MarkDirty();
@@ -387,20 +387,20 @@ public partial class HostView : UserControl
     {
         var menu = new ContextMenu();
         menu.Items.Add(Manager.IsEditing
-            ? Ui.Item("Terminar de editar", Glyphs.Accept, () => Manager.SetEditing(false))
-            : Ui.Item("Editar el diseño", Glyphs.Edit, () => Manager.SetEditing(true)));
-        menu.Items.Add(Ui.Item("Opciones", Glyphs.Settings, () => OpenWidgetSettings(p)));
+            ? Ui.Item(Loc.T("Terminar de editar"), Glyphs.Accept, () => Manager.SetEditing(false))
+            : Ui.Item(Loc.T("Editar el diseño"), Glyphs.Edit, () => Manager.SetEditing(true)));
+        menu.Items.Add(Ui.Item(Loc.T("Opciones"), Glyphs.Settings, () => OpenWidgetSettings(p)));
         menu.Items.Add(new Separator());
         for (var i = 0; i < Manager.Monitors.Count; i++)
         {
             var m = Manager.Monitors[i];
             if (m.Key == Monitor.Key) continue;
-            menu.Items.Add(Ui.Item("Mover a " + m.Label(i), Glyphs.Monitor, () => Manager.MovePanel(p.Panel, m)));
+            menu.Items.Add(Ui.Item(Loc.T("Mover a {0}", m.Label(i)), Glyphs.Monitor, () => Manager.MovePanel(p.Panel, m)));
         }
-        menu.Items.Add(Ui.Item("Ocultar", Glyphs.Hide, () => HidePanel(p)));
-        menu.Items.Add(Ui.Item("Quitar", Glyphs.Delete, () => RemovePanel(p)));
+        menu.Items.Add(Ui.Item(Loc.T("Ocultar"), Glyphs.Hide, () => HidePanel(p)));
+        menu.Items.Add(Ui.Item(Loc.T("Quitar"), Glyphs.Delete, () => RemovePanel(p)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Ui.Item("Ajustes de SackSpace", Glyphs.Settings, () => Manager.OpenSettings()));
+        menu.Items.Add(Ui.Item(Loc.T("Ajustes de SackSpace"), Glyphs.Settings, () => Manager.OpenSettings()));
         return menu;
     }
 
@@ -441,7 +441,7 @@ public partial class HostView : UserControl
 
     public void ShowSnackbar(string text, string? action, Action? onAction)
     {
-        SnackText.Text = text;
+        SnackText.Text = Loc.T(text);
         _snackAction = onAction;
         SnackAction.Content = action;
         SnackAction.Visibility = action is null ? Visibility.Collapsed : Visibility.Visible;

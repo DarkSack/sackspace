@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Loc = SackSpace.Core.Loc;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -45,6 +47,10 @@ public partial class App : Application
         Directory.CreateDirectory(data);
         Log.Init(data);
 
+        // A restart waits for the old process to let go of the data folder.
+        if (int.TryParse(Arg("--after"), out var oldPid))
+            try { using var old = Process.GetProcessById(oldPid); old.WaitForExit(10_000); } catch (ArgumentException) { }
+
         // One SackSpace per data folder; launching it again opens the settings of the running one.
         var id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(data.ToLowerInvariant())))[..16];
         _mutex = new Mutex(true, "SackSpace-" + id, out var first);
@@ -65,16 +71,22 @@ public partial class App : Application
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         Anim.LimitFrameRate();
 
+        // The default config (first run) is written in Windows' language; the saved choice wins after loading.
+        var ui = System.Globalization.CultureInfo.CurrentUICulture;
+        Loc.Use(Loc.Resolve("auto", ui), System.Globalization.CultureInfo.CurrentCulture);
         var store = new ConfigStore(data);
         var (config, outcome) = store.Load(CreateDefault);
+        Loc.Use(Loc.Resolve(config.General.Language, ui), System.Globalization.CultureInfo.CurrentCulture);
         Log.Info($"SackSpace {typeof(App).Assembly.GetName().Version?.ToString(3)} · configuración: {outcome} · datos en {data}");
         Anim.Configure(config.General.Animations && snapshot is null);
         WidgetRegistry.RegisterBuiltIns();
+        var plugins = PluginLoader.Load(data, config.General.Plugins);
 
         var session = new ConfigSession(store, config);
         var s = new AppServices
         {
             DataFolder = data,
+            Plugins = plugins,
             Session = session,
             Icons = new DesktopIconService(session),
             Theme = new ThemeService(data),
@@ -115,11 +127,15 @@ public partial class App : Application
         _tray = new TrayIcon(s, Quit);
         s.Timers.Notify = _tray.Notify;
         _ = new AutoSwitcher(s);
+        s.Play = new PlayTracker(s);
+        if (config.General.FileSearch) s.Files = NewFileIndex(s);
+        s.Hosts.WorkspaceSwitched += ws => SackMixLink.Profile(ws.Name);
+        if (s.Session.Config.ActiveWorkspace is { } startWs) SackMixLink.Profile(startWs.Name);
         if (bench) _ = Bench();
         else
         {
             s.Updates = new UpdateService(() => s.Session.Config.General.CheckUpdates);
-            s.Updates.Found += u => s.Hosts.PrimaryView?.ShowSnackbar($"Hay una versión nueva de SackSpace: {u.Version.ToString(3)}", "Instalar", () => InstallUpdate(u));
+            s.Updates.Found += u => s.Hosts.PrimaryView?.ShowSnackbar(Loc.T("Hay una versión nueva de SackSpace: {0}", u.Version.ToString(3)), "Instalar", () => InstallUpdate(u));
         }
         ListenForSecondLaunch();
         SessionEnding += (_, _) => s.Session.Flush();
@@ -138,13 +154,13 @@ public partial class App : Application
         switch (outcome)
         {
             case LoadOutcome.RestoredFromBackup:
-                primary?.ShowSnackbar("La configuración estaba dañada: se recuperó la copia anterior.");
+                primary?.ShowSnackbar(Loc.T("La configuración estaba dañada: se recuperó la copia anterior."));
                 break;
             case LoadOutcome.Reset:
-                primary?.ShowSnackbar("La configuración estaba dañada y sin copia: se empezó de cero. El archivo dañado se guardó aparte.");
+                primary?.ShowSnackbar(Loc.T("La configuración estaba dañada y sin copia: se empezó de cero. El archivo dañado se guardó aparte."));
                 break;
             case LoadOutcome.Created:
-                primary?.ShowSnackbar("SackSpace ya está en tu escritorio. Mantén pulsado un panel para moverlo.");
+                primary?.ShowSnackbar(Loc.T("SackSpace ya está en tu escritorio. Mantén pulsado un panel para moverlo."));
                 break;
         }
     }
@@ -188,6 +204,12 @@ public partial class App : Application
             Anim.Configure(config.General.Animations);
             s.Governor.PauseInFullscreen = config.General.PauseInFullscreen;
             if (config.General.StartWithWindows != _lastGeneral.StartWithWindows) Autostart.Apply(config.General.StartWithWindows);
+            if (config.General.FileSearch != _lastGeneral.FileSearch)
+            {
+                s.Files?.Dispose();
+                s.Files = config.General.FileSearch ? NewFileIndex(s) : null;
+                if (!config.General.FileSearch) FileIndex.Delete(s.DataFolder);
+            }
             _lastGeneral = Copy(config.General);
             s.Icons.Enable(config.General.DesktopIcons);
             s.Hosts.Rebuild();
@@ -213,6 +235,10 @@ public partial class App : Application
         if (kind.HasFlag(ChangeKind.Hotkeys)) RegisterHotkeys();
     }
 
+    private static FileIndex NewFileIndex(AppServices s) => new(s.DataFolder, () => s.Governor.Paused,
+        () => GameLibraries.InstalledGames(new HashSet<string>()).Select(g => g.Folder),
+        (text, ex) => { if (ex is null) Log.Info(text); else Log.Warn(text, ex); });
+
     private static GeneralSettings Copy(GeneralSettings g) => new()
     {
         StartWithWindows = g.StartWithWindows,
@@ -223,6 +249,8 @@ public partial class App : Application
         DesktopIcons = g.DesktopIcons,
         LockLayout = g.LockLayout,
         RestBehindWindows = g.RestBehindWindows,
+        CheckUpdates = g.CheckUpdates,
+        FileSearch = g.FileSearch,
     };
 
     private void RegisterHotkeys()
@@ -236,12 +264,12 @@ public partial class App : Application
     public async void InstallUpdate(UpdateInfo u)
     {
         var view = _s!.Hosts.PrimaryView;
-        view?.ShowSnackbar($"Descargando SackSpace {u.Version.ToString(3)}…");
+        view?.ShowSnackbar(Loc.T("Descargando SackSpace {0}…", u.Version.ToString(3)));
         try { await UpdateService.InstallAsync(u); }
         catch (Exception ex)
         {
             Log.Warn("No se pudo instalar la actualización", ex);
-            view?.ShowSnackbar("No se pudo actualizar: " + ex.Message, "Ver la versión", () => InstalledApps.Launch(u.Page, out _));
+            view?.ShowSnackbar(Loc.T("No se pudo actualizar: ") + ex.Message, Loc.T("Ver la versión"), () => InstalledApps.Launch(u.Page, out _));
         }
     }
 
@@ -253,10 +281,10 @@ public partial class App : Application
         try
         {
             if (await updates.CheckAsync(quiet: false) is { } u)
-                view?.ShowSnackbar($"Hay una versión nueva de SackSpace: {u.Version.ToString(3)}", "Instalar", () => InstallUpdate(u));
-            else view?.ShowSnackbar($"Tienes la última versión ({UpdateService.Running.ToString(3)}).");
+                view?.ShowSnackbar(Loc.T("Hay una versión nueva de SackSpace: {0}", u.Version.ToString(3)), "Instalar", () => InstallUpdate(u));
+            else view?.ShowSnackbar(Loc.T("Tienes la última versión ({0}).", UpdateService.Running.ToString(3)));
         }
-        catch (Exception) { view?.ShowSnackbar("No se pudo preguntar a GitHub. ¿Hay internet?"); }
+        catch (Exception) { view?.ShowSnackbar(Loc.T("No se pudo preguntar a GitHub. ¿Hay internet?")); }
     }
 
     /// <summary>Raises the panels and opens the search on the main screen; opening something lowers them again.</summary>
@@ -296,6 +324,18 @@ public partial class App : Application
         }) { IsBackground = true, Name = "SackSpace wake" }.Start();
     }
 
+    /// <summary>Quits and opens again with the same arguments (a new language needs a fresh start).</summary>
+    public void Restart()
+    {
+        var args = Environment.GetCommandLineArgs().Skip(1).ToList();
+        var i = args.IndexOf("--after");
+        if (i >= 0) args.RemoveRange(i, Math.Min(2, args.Count - i));
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        foreach (var a in args.Append("--after").Append(Environment.ProcessId.ToString())) start.ArgumentList.Add(a);
+        Process.Start(start)?.Dispose();
+        Quit();
+    }
+
     public void Quit()
     {
         if (_exiting) return;
@@ -306,6 +346,7 @@ public partial class App : Application
         _s?.Hosts.CloseSettings();
         _s?.Icons.Enable(false); // Windows' own desktop icons come back
         _s?.Hosts.CloseAll();
+        _s?.Files?.Dispose();
         Shutdown();
     }
 

@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Enumeration;
@@ -44,10 +45,10 @@ public sealed class StorageWidget : DockPanel, IDisposable
     {
         _c = c;
         _open = (c.Settings["open"] as JsonArray)?.Select(n => n?.GetValue<string>() ?? "").ToHashSet() ?? [];
-        var refresh = Ui.IconButton(Glyphs.Refresh, "Medir de nuevo", () => Scan(), 28);
-        var more = Ui.IconButton(Glyphs.More, "Más", () => { }, 28);
+        var refresh = Ui.IconButton(Glyphs.Refresh, Loc.T("Medir de nuevo"), () => Scan(), 28);
+        var more = Ui.IconButton(Glyphs.More, Loc.T("Más"), () => { }, 28);
         more.Click += (_, _) => MoreMenu(more).IsOpen = true;
-        var header = Ui.Header(Glyphs.Storage, "Almacenamiento", more, refresh);
+        var header = Ui.Header(Glyphs.Storage, Loc.T("Almacenamiento"), more, refresh);
         SetDock(header, Dock.Top);
         Children.Add(header);
         _status.Margin = new Thickness(0, -4, 0, 10);
@@ -88,21 +89,21 @@ public sealed class StorageWidget : DockPanel, IDisposable
         if (forgotten.Count == 0) return;
         var title = new TextBlock
         {
-            Text = $"Sin jugar hace más de 3 meses ({Size(forgotten.Sum(g => g.Bytes))})",
+            Text = Loc.T("Sin jugar hace más de 3 meses ({0})", Size(forgotten.Sum(g => g.Bytes))),
             FontSize = 12.5, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 4),
         };
         box.Children.Add(title);
         foreach (var g in forgotten)
         {
             var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-            var uninstall = Ui.Pill("Desinstalar", () => Open(g.Uninstall!), glyph: Glyphs.Delete);
-            uninstall.ToolTip = "Abre el desinstalador de Steam (te pide confirmar)";
+            var uninstall = Ui.Pill(Loc.T("Desinstalar"), () => Open(g.Uninstall!), glyph: Glyphs.Delete);
+            uninstall.ToolTip = Loc.T("Abre el desinstalador de Steam (te pide confirmar)");
             uninstall.Margin = new Thickness(8, 0, 0, 0);
             SetDock(uninstall, Dock.Right);
             row.Children.Add(uninstall);
             var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             text.Children.Add(new TextBlock { Text = $"{g.Name}  ·  {Size(g.Bytes)}", FontSize = 12.5, TextTrimming = TextTrimming.CharacterEllipsis });
-            text.Children.Add(Ui.Text("Última vez: " + g.LastPlayed!.Value.LocalDateTime.ToString("d 'de' MMMM 'de' yyyy", Ui.Culture)));
+            text.Children.Add(Ui.Text(Loc.T("Última vez: ") + g.LastPlayed!.Value.LocalDateTime.ToString(Loc.T("d 'de' MMMM 'de' yyyy"), Ui.Culture)));
             row.Children.Add(text);
             box.Children.Add(row);
         }
@@ -115,15 +116,15 @@ public sealed class StorageWidget : DockPanel, IDisposable
     {
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        yield return ("Archivos temporales", Path.GetTempPath());
-        yield return ("Volcados de programas que fallaron", Path.Combine(local, "CrashDumps"));
-        yield return ("Informes de errores de Windows", Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"));
-        yield return ("Caché de npm", Path.Combine(local, "npm-cache"));
-        yield return ("Caché de Yarn", Path.Combine(local, @"Yarn\Cache"));
-        yield return ("Caché de pnpm", Path.Combine(local, "pnpm-cache"));
-        yield return ("Caché de pip", Path.Combine(local, @"pip\cache"));
-        yield return ("Caché de NuGet (descargas)", Path.Combine(local, @"NuGet\v3-cache"));
-        yield return ("Caché de Gradle", Path.Combine(profile, @".gradle\caches"));
+        yield return (Loc.T("Archivos temporales"), Path.GetTempPath());
+        yield return (Loc.T("Volcados de programas que fallaron"), Path.Combine(local, "CrashDumps"));
+        yield return (Loc.T("Informes de errores de Windows"), Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"));
+        yield return (Loc.T("Caché de npm"), Path.Combine(local, "npm-cache"));
+        yield return (Loc.T("Caché de Yarn"), Path.Combine(local, @"Yarn\Cache"));
+        yield return (Loc.T("Caché de pnpm"), Path.Combine(local, "pnpm-cache"));
+        yield return (Loc.T("Caché de pip"), Path.Combine(local, @"pip\cache"));
+        yield return (Loc.T("Caché de NuGet (descargas)"), Path.Combine(local, @"NuGet\v3-cache"));
+        yield return (Loc.T("Caché de Gradle"), Path.Combine(profile, @".gradle\caches"));
     }
 
     private bool _cleanupOpen;
@@ -133,27 +134,27 @@ public sealed class StorageWidget : DockPanel, IDisposable
     {
         var box = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
         var head = new DockPanel();
-        var toggle = Ui.IconButton(_cleanupOpen ? Glyphs.ChevronUp : Glyphs.ChevronDown, _cleanupOpen ? "Ocultar" : "Revisar", ToggleCleanup, 22);
+        var toggle = Ui.IconButton(_cleanupOpen ? Glyphs.ChevronUp : Glyphs.ChevronDown, _cleanupOpen ? Loc.T("Ocultar") : Loc.T("Revisar"), ToggleCleanup, 22);
         SetDock(toggle, Dock.Right);
         head.Children.Add(toggle);
-        head.Children.Add(new TextBlock { Text = "Limpieza sugerida", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+        head.Children.Add(new TextBlock { Text = Loc.T("Limpieza sugerida"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
         box.Children.Add(head);
         if (!_cleanupOpen)
         {
-            box.Children.Add(Ui.Text("Temporales y cachés que sus programas vuelven a crear.", wrap: true));
+            box.Children.Add(Ui.Text(Loc.T("Temporales y cachés que sus programas vuelven a crear."), wrap: true));
             return box;
         }
         if (_cleanup is null)
         {
-            box.Children.Add(Ui.Text("Midiendo…"));
+            box.Children.Add(Ui.Text(Loc.T("Midiendo…")));
             return box;
         }
         var worth = _cleanup.Where(c => c.Bytes >= 50L * 1024 * 1024).OrderByDescending(c => c.Bytes).ToList();
-        if (worth.Count == 0) box.Children.Add(Ui.Text("Nada que valga la pena limpiar ahora.", wrap: true));
+        if (worth.Count == 0) box.Children.Add(Ui.Text(Loc.T("Nada que valga la pena limpiar ahora."), wrap: true));
         foreach (var (name, path, bytes) in worth)
         {
             var row = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
-            var clean = Ui.Pill("Limpiar", () => Clean(name, path, bytes), glyph: Glyphs.Delete);
+            var clean = Ui.Pill(Loc.T("Limpiar"), () => Clean(name, path, bytes), glyph: Glyphs.Delete);
             clean.Margin = new Thickness(8, 0, 0, 0);
             SetDock(clean, Dock.Right);
             row.Children.Add(clean);
@@ -179,7 +180,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
     private async void Clean(string name, string path, long bytes)
     {
         var owner = Window.GetWindow(this);
-        var answer = MessageBox.Show(owner, $"¿Vaciar «{name}» ({Size(bytes)})?\n\n{path}\n\nSe borra lo que hay dentro; lo que esté en uso se deja. Su programa lo vuelve a crear cuando lo necesite.",
+        var answer = MessageBox.Show(owner, Loc.T("¿Vaciar «{0}» ({1})?\n\n{2}\n\nSe borra lo que hay dentro; lo que esté en uso se deja. Su programa lo vuelve a crear cuando lo necesite.", name, Size(bytes), path),
             "SackSpace", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
         if (answer != MessageBoxResult.Yes) return;
         var left = await Task.Run(() =>
@@ -199,7 +200,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
         var i = _cleanup?.FindIndex(c => c.Path == path) ?? -1;
         if (i >= 0) _cleanup![i] = (name, path, left);
         Render();
-        _c.Toast($"Liberados {Size(Math.Max(bytes - left, 0))} de «{name}».");
+        _c.Toast(Loc.T("Liberados {0} de «{1}».", Size(Math.Max(bytes - left, 0)), name));
     }
 
     private TimeSpan? Interval => _c.Settings.GetString("interval", "1 día") switch
@@ -216,7 +217,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
     private void OnPaused(bool paused)
     {
         StorageScanner.Hold = paused;
-        if (StorageScanner.Running is not null) _status.Text = paused ? "Medición en pausa mientras juegas o ves algo a pantalla completa." : "Midiendo…";
+        if (StorageScanner.Running is not null) _status.Text = paused ? Loc.T("Medición en pausa mientras juegas o ves algo a pantalla completa.") : Loc.T("Midiendo…");
     }
 
     private void OnMinute(DateTime _)
@@ -235,7 +236,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
     private async void Wait(Task<IReadOnlyList<DriveUsage>> scan)
     {
-        _status.Text = "Midiendo…";
+        _status.Text = Loc.T("Midiendo…");
         try
         {
             var drives = await scan;
@@ -246,7 +247,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
         catch (Exception ex)
         {
             Log.Warn("No se pudo medir el almacenamiento", ex);
-            _c.Toast("No se pudo medir el almacenamiento: " + ex.Message);
+            _c.Toast(Loc.T("No se pudo medir el almacenamiento: ") + ex.Message);
         }
         Render();
         ShowStatus();
@@ -254,23 +255,23 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
     private void WarnIfFull(IReadOnlyList<DriveUsage> drives)
     {
-        var full = drives.Where(d => d.Free < d.Total * 0.1).Select(d => $"{d.Name} ({Size(d.Free)} libres)").ToList();
-        if (full.Count > 0) _c.Toast("Queda poco espacio en " + string.Join(", ", full));
+        var full = drives.Where(d => d.Free < d.Total * 0.1).Select(d => Loc.T("{0} ({1} libres)", d.Name, Size(d.Free))).ToList();
+        if (full.Count > 0) _c.Toast(Loc.T("Queda poco espacio en ") + string.Join(", ", full));
     }
 
     private ContextMenu MoreMenu(UIElement target)
     {
         var menu = new ContextMenu { PlacementTarget = target, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-        menu.Items.Add(Ui.Item("Medir de nuevo", Glyphs.Refresh, Scan));
-        menu.Items.Add(Ui.Item("Vaciar la papelera…", Glyphs.Delete, EmptyRecycleBin));
-        menu.Items.Add(Ui.Item("Liberar espacio (Sensor de almacenamiento)", Glyphs.Settings, () => Open("ms-settings:storagesense")));
-        menu.Items.Add(Ui.Item("Liberador de espacio de Windows", Glyphs.Drive, () => Open("cleanmgr.exe")));
+        menu.Items.Add(Ui.Item(Loc.T("Medir de nuevo"), Glyphs.Refresh, Scan));
+        menu.Items.Add(Ui.Item(Loc.T("Vaciar la papelera…"), Glyphs.Delete, EmptyRecycleBin));
+        menu.Items.Add(Ui.Item(Loc.T("Liberar espacio (Sensor de almacenamiento)"), Glyphs.Settings, () => Open("ms-settings:storagesense")));
+        menu.Items.Add(Ui.Item(Loc.T("Liberador de espacio de Windows"), Glyphs.Drive, () => Open("cleanmgr.exe")));
         return menu;
     }
 
     private void Open(string target)
     {
-        if (!InstalledApps.Launch(target, out var error)) _c.Toast($"No se pudo abrir: {error}");
+        if (!InstalledApps.Launch(target, out var error)) _c.Toast(Loc.T("No se pudo abrir: {0}", error));
     }
 
     // ── Status ──
@@ -283,20 +284,20 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
     private void ShowStatus()
     {
-        if (ReadAt() is not { } at) { _status.Text = "Aún sin medir."; return; }
+        if (ReadAt() is not { } at) { _status.Text = Loc.T("Aún sin medir."); return; }
         var drives = FromJson(_c.Settings["scan"]);
         var total = drives.Sum(d => d.Total);
         var used = drives.Sum(d => d.Total - d.Free);
-        _status.Text = (drives.Count > 1 ? $"{Size(used)} usados de {Size(total)} · " : "") + "medido " + Ago(at);
+        _status.Text = (drives.Count > 1 ? Loc.T("{0} usados de {1} · ", Size(used), Size(total)) : "") + Loc.T("medido ") + Ago(at);
     }
 
     private static string Ago(DateTimeOffset at)
     {
         var ago = DateTimeOffset.Now - at;
         return ago.TotalMinutes < 1 ? "ahora mismo"
-            : ago.TotalHours < 1 ? $"hace {(int)ago.TotalMinutes} min"
-            : ago.TotalDays < 1 ? $"hace {(int)ago.TotalHours} h"
-            : (int)ago.TotalDays == 1 ? "hace 1 día" : $"hace {(int)ago.TotalDays} días";
+            : ago.TotalHours < 1 ? Loc.T("hace {0} min", (int)ago.TotalMinutes)
+            : ago.TotalDays < 1 ? Loc.T("hace {0} h", (int)ago.TotalHours)
+            : (int)ago.TotalDays == 1 ? Loc.T("hace 1 día") : Loc.T("hace {0} días", (int)ago.TotalDays);
     }
 
     /// <summary>"512 MB", "4.3 GB", "372 GB", "1.25 TB".</summary>
@@ -318,14 +319,14 @@ public sealed class StorageWidget : DockPanel, IDisposable
         _list.Children.Clear();
         var drives = FromJson(_c.Settings["scan"]);
         foreach (var d in drives) _list.Children.Add(Drive(d));
-        if (drives.Count == 0) _list.Children.Add(Ui.Text("La primera medición recorre todo el disco y tarda unos minutos; puedes seguir usando el PC.", wrap: true));
+        if (drives.Count == 0) _list.Children.Add(Ui.Text(Loc.T("La primera medición recorre todo el disco y tarda unos minutos; puedes seguir usando el PC."), wrap: true));
         _list.Children.Add(CleanupSection());
     }
 
     private FrameworkElement Drive(DriveUsage d)
     {
         var top = new DockPanel();
-        var used = Ui.Text($"{Size(d.Total - d.Free)} de {Size(d.Total)}");
+        var used = Ui.Text(Loc.T("{0} de {1}", Size(d.Total - d.Free), Size(d.Total)));
         SetDock(used, Dock.Right);
         top.Children.Add(used);
         top.Children.Add(new TextBlock { Text = d.Label.Length > 0 ? $"{d.Name}  {d.Label}" : d.Name, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -358,9 +359,9 @@ public sealed class StorageWidget : DockPanel, IDisposable
             warn.VerticalAlignment = VerticalAlignment.Center;
             line.Children.Add(warn);
         }
-        var text = (low ? "Queda poco espacio: " : "") + $"{Size(d.Free)} libres ({d.Free * 100 / Math.Max(d.Total, 1)} %)";
+        var text = (low ? Loc.T("Queda poco espacio: ") : "") + $"{Size(d.Free)} libres ({d.Free * 100 / Math.Max(d.Total, 1)} %)";
         if (d.Baseline is { } b && Math.Abs(d.Total - d.Free - b.Used) >= 100L * 1024 * 1024)
-            text += $" · {Delta(d.Total - d.Free - b.Used)} usados desde {Ago(b.At)}";
+            text += Loc.T(" · {0} usados desde {1}", Delta(d.Total - d.Free - b.Used), Ago(b.At));
         line.Children.Add(Ui.Text(text));
         return line;
     }
@@ -398,10 +399,10 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
     private static string Tip(DriveUsage d, string category, long bytes)
     {
-        var tip = $"{category}: {Size(bytes)} ({bytes * 100.0 / Math.Max(d.Total, 1):0.#} % del disco)";
+        var tip = Loc.T("{0}: {1} ({2:0.#} % del disco)", Loc.T(category), Size(bytes), bytes * 100.0 / Math.Max(d.Total, 1));
         if (d.Baseline?.Parts.TryGetValue(category, out var before) == true && Math.Abs(bytes - before) >= 100L * 1024 * 1024)
-            tip += $"\n{Delta(bytes - before)} desde {Ago(d.Baseline.At)}";
-        return tip + "\nClic para ver qué ocupa";
+            tip += Loc.T("\n{0} desde {1}", Delta(bytes - before), Ago(d.Baseline.At));
+        return tip + Loc.T("\nClic para ver qué ocupa");
     }
 
     private void Toggle(DriveUsage d, string category)
@@ -417,7 +418,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
         var swatch = new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(2), Background = new SolidColorBrush(ColorOf(category)), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         var content = new StackPanel { Orientation = Orientation.Horizontal };
         content.Children.Add(swatch);
-        content.Children.Add(Ui.Text($"{category} {Size(bytes)}"));
+        content.Children.Add(Ui.Text(Loc.T(category) + " " + Size(bytes)));
         var open = _open.Contains(Key(d, category));
         var face = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(4, 2, 6, 2), Child = content, Background = Brushes.Transparent };
         if (open) face.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
@@ -437,10 +438,10 @@ public sealed class StorageWidget : DockPanel, IDisposable
     {
         var box = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         var title = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        var close = Ui.IconButton(Glyphs.Close, "Cerrar", () => Toggle(d, category), 22);
+        var close = Ui.IconButton(Glyphs.Close, Loc.T("Cerrar"), () => Toggle(d, category), 22);
         SetDock(close, Dock.Right);
         title.Children.Add(close);
-        title.Children.Add(new TextBlock { Text = $"{category} en {d.Name}", FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        title.Children.Add(new TextBlock { Text = Loc.T("{0} en {1}", Loc.T(category), d.Name), FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         box.Children.Add(title);
 
         var items = d.Items.GetValueOrDefault(category) ?? [];
@@ -449,10 +450,10 @@ public sealed class StorageWidget : DockPanel, IDisposable
 
         var note = category switch
         {
-            StorageUsage.Hidden => "Puntos de restauración, datos del sistema de archivos y carpetas que piden permisos de administrador. Para reducirlo: Liberador de espacio › Limpiar archivos del sistema.",
-            StorageUsage.Other => "Carpetas que SackSpace no sabe de qué son. Clasifícalas en las opciones del panel: Categoría=carpeta (p. ej. Juegos=E:\\MisJuegos).",
+            StorageUsage.Hidden => Loc.T("Puntos de restauración, datos del sistema de archivos y carpetas que piden permisos de administrador. Para reducirlo: Liberador de espacio › Limpiar archivos del sistema."),
+            StorageUsage.Other => Loc.T("Carpetas que SackSpace no sabe de qué son. Clasifícalas en las opciones del panel: Categoría=carpeta (p. ej. Juegos=E:\\MisJuegos)."),
             StorageUsage.Trash => null,
-            _ => items.Count == 0 ? "Sin detalle: vuelve a medir." : null,
+            _ => items.Count == 0 ? Loc.T("Sin detalle: vuelve a medir.") : null,
         };
         if (note is not null)
         {
@@ -462,7 +463,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
         }
         if (category == StorageUsage.Trash)
         {
-            var empty = Ui.Pill("Vaciar la papelera", EmptyRecycleBin, glyph: Glyphs.Delete);
+            var empty = Ui.Pill(Loc.T("Vaciar la papelera"), EmptyRecycleBin, glyph: Glyphs.Delete);
             empty.HorizontalAlignment = HorizontalAlignment.Left;
             empty.Margin = new Thickness(0, 6, 0, 0);
             box.Children.Add(empty);
@@ -502,8 +503,8 @@ public sealed class StorageWidget : DockPanel, IDisposable
         row.MouseLeave += (_, _) => face.Background = Brushes.Transparent;
         row.Click += (_, _) => InstalledApps.ShowInFolder(item.Path);
         var menu = new ContextMenu();
-        menu.Items.Add(Ui.Item("Abrir en el Explorador", Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
-        menu.Items.Add(Ui.Item("Copiar la ruta", Glyphs.Document, () =>
+        menu.Items.Add(Ui.Item(Loc.T("Abrir en el Explorador"), Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
+        menu.Items.Add(Ui.Item(Loc.T("Copiar la ruta"), Glyphs.Document, () =>
         {
             try { Clipboard.SetText(item.Path); }
             catch (COMException) { } // the clipboard is busy in another app
@@ -529,7 +530,7 @@ public sealed class StorageWidget : DockPanel, IDisposable
                 }
         _c.Save();
         Render();
-        _c.Toast("Papelera vaciada.");
+        _c.Toast(Loc.T("Papelera vaciada."));
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -667,7 +668,7 @@ internal static class StorageScanner
                 if (watch.Elapsed - started > TimeSpan.FromSeconds(10))
                     Log.Info($"Almacenamiento: '{path}' tardó {(watch.Elapsed - started).TotalSeconds:0} s");
                 results.Add(new Result(drive, item, bytes, items));
-                progress.Report($"Midiendo… {Interlocked.Increment(ref done)} de {plan.Count} carpetas");
+                progress.Report(Loc.T("Midiendo… {0} de {1} carpetas", Interlocked.Increment(ref done), plan.Count));
             }
         }) { IsBackground = true, Priority = ThreadPriority.Lowest }).ToList();
         threads.ForEach(t => t.Start());

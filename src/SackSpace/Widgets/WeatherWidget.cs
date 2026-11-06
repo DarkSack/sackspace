@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Globalization;
 using System.Net.Http;
 using System.Text.Json.Nodes;
@@ -79,10 +80,10 @@ public sealed class WeatherWidget : Grid, IDisposable
         _showDays = c.Settings.GetBool("days", true);
         if (_city.Length == 0)
         {
-            Children.Add(Message("Escribe tu ciudad en las opciones del widget (el engranaje en modo edición, o clic derecho › Opciones)."));
+            Children.Add(Message(Loc.T("Escribe tu ciudad en las opciones del widget (el engranaje en modo edición, o clic derecho › Opciones).")));
             return;
         }
-        Children.Add(Message("Cargando el tiempo de " + _city + "…"));
+        Children.Add(Message(Loc.T("Cargando el tiempo de ") + _city + "…"));
         c.Services.Clock.Minute += OnMinute;
         _ = Load();
     }
@@ -108,7 +109,7 @@ public sealed class WeatherWidget : Grid, IDisposable
             if (Tag is null)
             {
                 Children.Clear();
-                Children.Add(Message(ex is InvalidOperationException ? $"No encontré «{_city}». Prueba con otro nombre." : "Sin conexión. Lo intento de nuevo en un rato."));
+                Children.Add(Message(ex is InvalidOperationException ? Loc.T("No encontré «{0}». Prueba con otro nombre.", _city) : Loc.T("Sin conexión. Lo intento de nuevo en un rato.")));
             }
         }
         finally { _loading = false; }
@@ -134,7 +135,7 @@ public sealed class WeatherWidget : Grid, IDisposable
         var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         texts.Children.Add(new TextBlock { Text = r.Place, Style = Ui.Style("Title") });
         texts.Children.Add(Ui.Text(sky));
-        texts.Children.Add(Ui.Text(string.Format(Ui.Culture, "Sensación {0:0}° · {1:0} % · {2:0} km/h", r.Feels, r.Humidity, r.Wind)));
+        texts.Children.Add(Ui.Text(string.Format(Ui.Culture, Loc.T("Sensación {0:0}° · {1:0} % · {2:0} km/h"), r.Feels, r.Humidity, r.Wind)));
         now.Children.Add(texts);
         Children.Add(now);
 

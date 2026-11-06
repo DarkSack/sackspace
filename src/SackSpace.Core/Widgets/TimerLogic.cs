@@ -73,11 +73,11 @@ public static class TimerLogic
     public static string Finish(JsonObject s)
     {
         Reset(s);
-        if (Mode(s) != Pomodoro) return "Se acabó el tiempo.";
+        if (Mode(s) != Pomodoro) return Loc.T("Se acabó el tiempo.");
         if (OnBreak(s))
         {
             s["phase"] = "work";
-            return "Fin del descanso: a por el siguiente pomodoro.";
+            return Loc.T("Fin del descanso: a por el siguiente pomodoro.");
         }
         s["phase"] = "break";
         s["rounds"] = Rounds(s) + 1;

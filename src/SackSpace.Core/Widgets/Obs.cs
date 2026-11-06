@@ -104,8 +104,8 @@ public sealed class ObsClient : IDisposable
             var r = await _ws.ReceiveAsync(buffer.GetMemory(4096), ct);
             if (r.MessageType == WebSocketMessageType.Close)
                 throw new ObsException(_ws.CloseStatus == (WebSocketCloseStatus)4009 // AuthenticationFailed
-                    ? "OBS rechazó la contraseña."
-                    : $"OBS cerró la conexión ({_ws.CloseStatusDescription}).");
+                    ? Loc.T("OBS rechazó la contraseña.")
+                    : Loc.T("OBS cerró la conexión ({0}).", _ws.CloseStatusDescription));
             buffer.Advance(r.Count);
             if (!r.EndOfMessage) continue;
             using var doc = JsonDocument.Parse(buffer.WrittenMemory);

@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -27,12 +28,12 @@ public sealed class SettingsWindow : Window
 {
     private static readonly (string Id, string Glyph, string Title)[] Pages =
     [
-        ("general", Glyphs.Settings, "General"),
-        ("apariencia", Glyphs.Color, "Apariencia"),
-        ("espacios", Glyphs.Grid, "Espacios"),
-        ("atajos", Glyphs.Keyboard, "Atajos de teclado"),
-        ("datos", Glyphs.Shield, "Datos y privacidad"),
-        ("acerca", Glyphs.Info, "Acerca de"),
+        ("general", Glyphs.Settings, Loc.T("General")),
+        ("apariencia", Glyphs.Color, Loc.T("Apariencia")),
+        ("espacios", Glyphs.Grid, Loc.T("Espacios")),
+        ("atajos", Glyphs.Keyboard, Loc.T("Atajos de teclado")),
+        ("datos", Glyphs.Shield, Loc.T("Datos y privacidad")),
+        ("acerca", Glyphs.Info, Loc.T("Acerca de")),
     ];
 
     public static readonly string[] Swatches =
@@ -51,7 +52,7 @@ public sealed class SettingsWindow : Window
     public SettingsWindow(AppServices services)
     {
         _s = services;
-        Title = "Ajustes de SackSpace";
+        Title = Loc.T("Ajustes de SackSpace");
         Width = 980;
         Height = 700;
         MinWidth = 760;
@@ -263,70 +264,88 @@ public sealed class SettingsWindow : Window
     private void General()
     {
         var g = Config.General;
-        Heading("General");
+        Heading(Loc.T("General"));
+        var languages = new WrapPanel();
+        foreach (var (code, name) in new[] { ("auto", Loc.T("El de Windows")) }.Concat(Loc.Languages))
+        {
+            var chip = Ui.Pill(name, () =>
+            {
+                if (g.Language == code) return;
+                g.Language = code;
+                Notify(ChangeKind.General);
+                Refresh();
+            }, accent: g.Language == code);
+            chip.Margin = new Thickness(0, 0, 8, 8);
+            languages.Children.Add(chip);
+        }
+        var applied = Loc.Resolve(g.Language, System.Globalization.CultureInfo.CurrentUICulture) == Loc.Language;
+        Card(Loc.T("Idioma"), applied ? Loc.T("Language · Idioma") : Loc.T("Se aplica al reiniciar SackSpace."),
+            applied ? null : Ui.Pill(Loc.T("Reiniciar"), () => ((App)Application.Current).Restart(), accent: true), languages);
         var autostart = Toggle(g.StartWithWindows, v => { g.StartWithWindows = v; Notify(ChangeKind.General); });
         autostart.IsEnabled = Autostart.Available;
-        Card("Iniciar con Windows",
-            Autostart.Available ? "SackSpace se abre solo al entrar en tu sesión." : "No disponible en una compilación de desarrollo (dotnet run).",
+        Card(Loc.T("Iniciar con Windows"),
+            Autostart.Available ? Loc.T("SackSpace se abre solo al entrar en tu sesión.") : Loc.T("No disponible en una compilación de desarrollo (dotnet run)."),
             autostart);
-        Card("Usar todas las pantallas", "Cada monitor tiene sus propios paneles. Apagado, solo la pantalla principal.",
+        Card(Loc.T("Usar todas las pantallas"), Loc.T("Cada monitor tiene sus propios paneles. Apagado, solo la pantalla principal."),
             Toggle(g.UseAllMonitors, v => { g.UseAllMonitors = v; Notify(ChangeKind.General); }));
-        Card("Barra de espacios", "Las pestañas arriba de la pantalla principal para cambiar de espacio.",
+        Card(Loc.T("Barra de espacios"), Loc.T("Las pestañas arriba de la pantalla principal para cambiar de espacio."),
             Toggle(g.ShowWorkspaceBar, v => { g.ShowWorkspaceBar = v; Notify(ChangeKind.General); }));
-        Card("Iconos del escritorio por espacio", "Cada espacio muestra solo los iconos que elijas: clic derecho sobre un icono, o el lápiz de la barra › Iconos. SackSpace oculta los de Windows mientras está abierto; al salir vuelven. No se mueve ni cambia ningún archivo.",
+        Card(Loc.T("Iconos del escritorio por espacio"), Loc.T("Cada espacio muestra solo los iconos que elijas: clic derecho sobre un icono, o el lápiz de la barra › Iconos. SackSpace oculta los de Windows mientras está abierto; al salir vuelven. No se mueve ni cambia ningún archivo."),
             Toggle(g.DesktopIcons, v => { g.DesktopIcons = v; Notify(ChangeKind.General); }));
-        Card("Animaciones", "Movimientos suaves al cambiar de espacio y al mover paneles. Se apagan solas si Windows tiene los efectos desactivados.",
+        Card(Loc.T("Animaciones"), Loc.T("Movimientos suaves al cambiar de espacio y al mover paneles. Se apagan solas si Windows tiene los efectos desactivados."),
             Toggle(g.Animations, v => { g.Animations = v; Notify(ChangeKind.General); }));
-        Card("Pausar con pantalla completa", "Relojes y medidores descansan mientras juegas o ves un vídeo a pantalla completa, y con la sesión bloqueada.",
+        Card(Loc.T("Pausar con pantalla completa"), Loc.T("Relojes y medidores descansan mientras juegas o ves un vídeo a pantalla completa, y con la sesión bloqueada."),
             Toggle(g.PauseInFullscreen, v => { g.PauseInFullscreen = v; Notify(ChangeKind.General); }));
-        Card("Descansar detrás de ventanas maximizadas", "Una pantalla tapada por una ventana maximizada o a pantalla completa deja de dibujar sus paneles hasta que se despeje. Ahorra procesador; no cambia nada de lo que ves.",
+        Card(Loc.T("Descansar detrás de ventanas maximizadas"), Loc.T("Una pantalla tapada por una ventana maximizada o a pantalla completa deja de dibujar sus paneles hasta que se despeje. Ahorra procesador; no cambia nada de lo que ves."),
             Toggle(g.RestBehindWindows, v => { g.RestBehindWindows = v; Notify(ChangeKind.General); }));
-        Card("Buscar actualizaciones", "Una vez al día pregunta a GitHub si hay una versión nueva y te avisa; nada se instala sin que lo pidas. Es lo único que sale a internet aparte de los widgets de Clima y Uso de IA.",
+        Card(Loc.T("Buscar actualizaciones"), Loc.T("Una vez al día pregunta a GitHub si hay una versión nueva y te avisa; nada se instala sin que lo pidas. Es lo único que sale a internet aparte de los widgets de Clima y Uso de IA."),
             Toggle(g.CheckUpdates, v => { g.CheckUpdates = v; Notify(ChangeKind.General); }));
-        Card("Bloquear el diseño", "Mantener pulsado un panel ya no lo pone en modo edición, para no moverlo sin querer. El lápiz de la barra y el atajo siguen funcionando.",
+        Card(Loc.T("Buscar en tus archivos"), Loc.T("El buscador ({0}) encuentra también tus archivos por su nombre exacto o parecido. SackSpace guarda la lista de nombres en su carpeta de datos y la rehace cada 12 h; no lee el contenido de los archivos ni sale de tu PC. Deja fuera Windows, los programas, los juegos instalados, las cachés y las carpetas que empiezan por punto.", Shortcut(HotkeyActions.Search)),
+            Toggle(g.FileSearch, v => { g.FileSearch = v; Notify(ChangeKind.General); }));
+        Card(Loc.T("Bloquear el diseño"), Loc.T("Mantener pulsado un panel ya no lo pone en modo edición, para no moverlo sin querer. El lápiz de la barra y el atajo siguen funcionando."),
             Toggle(g.LockLayout, v => { g.LockLayout = v; Notify(ChangeKind.General); }));
 
-        Group("Cómo se usa");
-        Card("Mover y cambiar el tamaño", "Mantén pulsado un panel, o usa el lápiz de la barra. Arrastra el panel para moverlo y la esquina para cambiar su tamaño; se alinean solos.", null);
-        Card("Ver los paneles sobre las ventanas", $"{Shortcut(HotkeyActions.Peek)} o un clic en el icono de SackSpace junto al reloj. Esc o un clic fuera los vuelve a bajar.", null);
-        Card("Cambiar de espacio", $"Las pestañas, la rueda del ratón sobre ellas o {Shortcut(HotkeyActions.Previous)} / {Shortcut(HotkeyActions.Next)}.", null);
+        Group(Loc.T("Cómo se usa"));
+        Card(Loc.T("Mover y cambiar el tamaño"), Loc.T("Mantén pulsado un panel, o usa el lápiz de la barra. Arrastra el panel para moverlo y la esquina para cambiar su tamaño; se alinean solos."), null);
+        Card(Loc.T("Ver los paneles sobre las ventanas"), Loc.T("{0} o un clic en el icono de SackSpace junto al reloj. Esc o un clic fuera los vuelve a bajar.", Shortcut(HotkeyActions.Peek)), null);
+        Card(Loc.T("Cambiar de espacio"), Loc.T("Las pestañas, la rueda del ratón sobre ellas o {0} / {1}.", Shortcut(HotkeyActions.Previous), Shortcut(HotkeyActions.Next)), null);
     }
 
     private string Shortcut(string action)
     {
         var s = Config.Hotkeys.GetValueOrDefault(action);
-        return string.IsNullOrEmpty(s) ? "su atajo" : s;
+        return string.IsNullOrEmpty(s) ? Loc.T("su atajo") : s;
     }
 
     private void Appearance()
     {
         var a = Config.Appearance;
         var t = _s.Theme.Current;
-        Heading("Apariencia");
+        Heading(Loc.T("Apariencia"));
 
-        Group("Tema");
+        Group(Loc.T("Tema"));
         var themes = new WrapPanel();
         foreach (var theme in _s.Theme.Catalog.Themes) themes.Children.Add(ThemeCard(theme, theme.Id == t.Base.Id));
         _page.Children.Add(themes);
         var themeTools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-        themeTools.Children.Add(Ui.Pill("Abrir la carpeta de temas", () => Open(_s.Theme.ThemesFolder), glyph: Glyphs.Folder));
-        var reload = Ui.Pill("Recargar", () => { _s.Theme.ReloadCatalog(); _s.ApplyTheme(false); Refresh(); }, glyph: Glyphs.Undo);
+        themeTools.Children.Add(Ui.Pill(Loc.T("Abrir la carpeta de temas"), () => Open(_s.Theme.ThemesFolder), glyph: Glyphs.Folder));
+        var reload = Ui.Pill(Loc.T("Recargar"), () => { _s.Theme.ReloadCatalog(); _s.ApplyTheme(false); Refresh(); }, glyph: Glyphs.Undo);
         reload.Margin = new Thickness(8, 0, 0, 0);
         themeTools.Children.Add(reload);
         _page.Children.Add(themeTools);
-        var hint = Ui.Text("Para añadir un tema, copia su archivo .json en esa carpeta y pulsa Recargar.", size: 12, wrap: true);
+        var hint = Ui.Text(Loc.T("Para añadir un tema, copia su archivo .json en esa carpeta y pulsa Recargar."), size: 12, wrap: true);
         hint.Margin = new Thickness(2, 8, 0, 0);
         _page.Children.Add(hint);
         foreach (var error in _s.Theme.Catalog.Errors)
         {
-            var e = Ui.Text("No se cargó: " + error, size: 12, wrap: true);
+            var e = Ui.Text(Loc.T("No se cargó: ") + error, size: 12, wrap: true);
             e.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x7A, 0x7A));
             _page.Children.Add(e);
         }
 
-        Group("Color de acento");
+        Group(Loc.T("Color de acento"));
         var modes = new WrapPanel();
-        foreach (var (mode, label) in new[] { (AccentMode.Workspace, "El de cada espacio"), (AccentMode.Wallpaper, "Del fondo de pantalla"), (AccentMode.Theme, "El del tema"), (AccentMode.Custom, "Personalizado") })
+        foreach (var (mode, label) in new[] { (AccentMode.Workspace, Loc.T("El de cada espacio")), (AccentMode.Wallpaper, Loc.T("Del fondo de pantalla")), (AccentMode.Theme, Loc.T("El del tema")), (AccentMode.Custom, Loc.T("Personalizado")) })
         {
             var chip = Ui.Pill(label, () => { a.AccentMode = mode; Notify(ChangeKind.Appearance); Refresh(); }, accent: a.AccentMode == mode);
             chip.Margin = new Thickness(0, 0, 8, 8);
@@ -349,24 +368,24 @@ public sealed class SettingsWindow : Window
             _page.Children.Add(row);
         }
 
-        Group("Cristal");
-        Card("Cristal transparente", "Deja ver el escritorio en vivo, sin difuminar, también los fondos animados de Wallpaper Engine o Lively. Si cuesta leer, sube la opacidad.",
+        Group(Loc.T("Cristal"));
+        Card(Loc.T("Cristal transparente"), Loc.T("Deja ver el escritorio en vivo, sin difuminar, también los fondos animados de Wallpaper Engine o Lively. Si cuesta leer, sube la opacidad."),
             Toggle(a.ClearGlass, v => { a.ClearGlass = v; Notify(ChangeKind.Appearance); }));
-        Slide("Opacidad del cristal", "Más alto, más fácil de leer sobre fondos con mucho detalle.", 0.1, 0.95, 0.05, t.GlassOpacity,
+        Slide(Loc.T("Opacidad del cristal"), Loc.T("Más alto, más fácil de leer sobre fondos con mucho detalle."), 0.1, 0.95, 0.05, t.GlassOpacity,
             v => $"{v * 100:0} %", v => a.GlassOpacity = v);
         // One per screen: each may have a busier or calmer wallpaper.
         var monitors = _s.Hosts.Monitors;
         for (var i = 0; i < monitors.Count; i++)
         {
             var key = monitors[i].Key;
-            Slide(monitors.Count == 1 ? "Desenfoque" : "Desenfoque · " + monitors[i].Label(i),
-                "En 0 el fondo se ve nítido; más alto, más difuminado detrás de los paneles.", 0, 80, 2,
+            Slide(monitors.Count == 1 ? Loc.T("Desenfoque") : "Desenfoque · " + monitors[i].Label(i),
+                Loc.T("En 0 el fondo se ve nítido; más alto, más difuminado detrás de los paneles."), 0, 80, 2,
                 a.BlurByMonitor?.GetValueOrDefault(key, t.BlurRadius) ?? t.BlurRadius,
                 v => $"{v:0} px", v => (a.BlurByMonitor ??= new())[key] = v);
         }
-        Slide("Esquinas", "Radio de los bordes redondeados.", 0, 32, 1, t.CornerRadius,
+        Slide(Loc.T("Esquinas"), Loc.T("Radio de los bordes redondeados."), 0, 32, 1, t.CornerRadius,
             v => $"{v:0} px", v => a.CornerRadius = v);
-        var reset = Ui.Pill("Volver a los valores del tema", () =>
+        var reset = Ui.Pill(Loc.T("Volver a los valores del tema"), () =>
         {
             a.GlassOpacity = a.BlurRadius = a.CornerRadius = null;
             a.BlurByMonitor = null;
@@ -377,12 +396,12 @@ public sealed class SettingsWindow : Window
         reset.Margin = new Thickness(0, 6, 0, 0);
         _page.Children.Add(reset);
 
-        Group("Fondo detrás del cristal");
+        Group(Loc.T("Fondo detrás del cristal"));
         var custom = a.CustomWallpaper;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
-        buttons.Children.Add(Ui.Pill(custom is null ? "Usar una imagen…" : "Cambiar…", () =>
+        buttons.Children.Add(Ui.Pill(custom is null ? Loc.T("Usar una imagen…") : Loc.T("Cambiar…"), () =>
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Imagen para el cristal", Filter = "Imágenes|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.tif;*.tiff" };
+            var dialog = new Microsoft.Win32.OpenFileDialog { Title = Loc.T("Imagen para el cristal"), Filter = Loc.T("Imágenes|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.tif;*.tiff") };
             if (dialog.ShowDialog(this) != true) return;
             a.CustomWallpaper = dialog.FileName;
             Notify(ChangeKind.Appearance);
@@ -390,15 +409,15 @@ public sealed class SettingsWindow : Window
         }, glyph: Glyphs.Folder));
         if (custom is not null)
         {
-            var auto = Ui.Pill("Automático", () => { a.CustomWallpaper = null; Notify(ChangeKind.Appearance); Refresh(); }, glyph: Glyphs.Undo);
+            var auto = Ui.Pill(Loc.T("Automático"), () => { a.CustomWallpaper = null; Notify(ChangeKind.Appearance); Refresh(); }, glyph: Glyphs.Undo);
             auto.Margin = new Thickness(8, 0, 0, 0);
             buttons.Children.Add(auto);
         }
-        var screens = _s.Hosts.Views.Select((v, i) => $"{(v.Monitor.IsPrimary ? "Pantalla principal" : $"Pantalla {i + 1}")}: {_s.Wallpaper.Get(v.Monitor).Source}");
-        Card(custom is null ? "Automático" : "Imagen propia",
+        var screens = _s.Hosts.Views.Select((v, i) => $"{(v.Monitor.IsPrimary ? Loc.T("Pantalla principal") : $"Pantalla {i + 1}")}: {_s.Wallpaper.Get(v.Monitor).Source}");
+        Card(custom is null ? Loc.T("Automático") : Loc.T("Imagen propia"),
             custom is null
-                ? "Se difumina lo que muestra cada pantalla. Con Wallpaper Engine o Lively se usa la vista previa de su fondo.\n" + string.Join("\n", screens)
-                : Path.GetFileName(custom) + " en todas las pantallas.",
+                ? Loc.T("Se difumina lo que muestra cada pantalla. Con Wallpaper Engine o Lively se usa la vista previa de su fondo.\n") + string.Join("\n", screens)
+                : Path.GetFileName(custom) + Loc.T(" en todas las pantallas."),
             buttons);
     }
 
@@ -458,7 +477,7 @@ public sealed class SettingsWindow : Window
 
         var stack = new StackPanel { Margin = new Thickness(0, 0, 12, 12) };
         stack.Children.Add(preview);
-        stack.Children.Add(new TextBlock { Text = theme.Name, FontSize = 13, Margin = new Thickness(4, 8, 0, 0), FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal });
+        stack.Children.Add(new TextBlock { Text = Loc.T(theme.Name), FontSize = 13, Margin = new Thickness(4, 8, 0, 0), FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal });
         var b = new Button { Content = stack, Template = GallerySheet.BareButton(), Cursor = Cursors.Hand };
         b.Click += (_, _) =>
         {
@@ -471,7 +490,7 @@ public sealed class SettingsWindow : Window
 
     private void Workspaces()
     {
-        Heading("Espacios", "Cada espacio guarda sus propios paneles, accesos y notas. Cambia con las pestañas de arriba, la rueda del ratón sobre ellas o los atajos.");
+        Heading(Loc.T("Espacios"), Loc.T("Cada espacio guarda sus propios paneles, accesos y notas. Cambia con las pestañas de arriba, la rueda del ratón sobre ellas o los atajos."));
         var list = Config.Workspaces;
         for (var i = 0; i < list.Count; i++)
         {
@@ -481,7 +500,7 @@ public sealed class SettingsWindow : Window
             var iconFace = new Grid { Width = 40, Height = 40 };
             iconFace.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = new SolidColorBrush(Argb.TryParse(ws.Accent, out var ac) ? Color.FromRgb(ac.R, ac.G, ac.B) : Colors.Gray) });
             iconFace.Children.Add(new TextBlock { Text = ws.Icon, Style = Ui.Style("Icon"), FontSize = 16, Foreground = ac.Luminance > 0.45 ? new SolidColorBrush(Color.FromRgb(16, 19, 26)) : Brushes.White });
-            var iconButton = new Button { Content = iconFace, Template = GallerySheet.BareButton(), Cursor = Cursors.Hand, ToolTip = "Cambiar el icono", Margin = new Thickness(0, 0, 16, 0) };
+            var iconButton = new Button { Content = iconFace, Template = GallerySheet.BareButton(), Cursor = Cursors.Hand, ToolTip = Loc.T("Cambiar el icono"), Margin = new Thickness(0, 0, 16, 0) };
             iconButton.Click += (_, _) =>
             {
                 var menu = new ContextMenu { PlacementTarget = iconButton };
@@ -519,15 +538,15 @@ public sealed class SettingsWindow : Window
             middle.Children.Add(Automatic(ws));
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
-            if (ws.Id == Config.ActiveWorkspace?.Id) actions.Children.Add(new TextBlock { Text = "En uso", FontSize = 12, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Ui.Brush("AccentBrush") });
-            else actions.Children.Add(WithMargin(Ui.Pill("Mostrar", () => { _s.Hosts.SwitchTo(ws.Id); Refresh(); }), 0, 0, 8, 0));
-            var up = Ui.IconButton(Glyphs.ChevronUp, "Subir", () => { Swap(index, index - 1); }, 32);
+            if (ws.Id == Config.ActiveWorkspace?.Id) actions.Children.Add(new TextBlock { Text = Loc.T("En uso"), FontSize = 12, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Ui.Brush("AccentBrush") });
+            else actions.Children.Add(WithMargin(Ui.Pill(Loc.T("Mostrar"), () => { _s.Hosts.SwitchTo(ws.Id); Refresh(); }), 0, 0, 8, 0));
+            var up = Ui.IconButton(Glyphs.ChevronUp, Loc.T("Subir"), () => { Swap(index, index - 1); }, 32);
             up.IsEnabled = index > 0;
-            var down = Ui.IconButton(Glyphs.ChevronDown, "Bajar", () => { Swap(index, index + 1); }, 32);
+            var down = Ui.IconButton(Glyphs.ChevronDown, Loc.T("Bajar"), () => { Swap(index, index + 1); }, 32);
             down.IsEnabled = index < list.Count - 1;
             actions.Children.Add(up);
             actions.Children.Add(down);
-            var delete = Confirm("Borrar", "¿Borrar con sus paneles?", () =>
+            var delete = Confirm(Loc.T("Borrar"), Loc.T("¿Borrar con sus paneles?"), () =>
             {
                 list.Remove(ws);
                 if (Config.ActiveWorkspaceId == ws.Id) Config.ActiveWorkspaceId = list[0].Id;
@@ -549,7 +568,7 @@ public sealed class SettingsWindow : Window
             _page.Children.Add(card);
         }
 
-        var add = Ui.Pill("Añadir un espacio", () =>
+        var add = Ui.Pill(Loc.T("Añadir un espacio"), () =>
         {
             var used = list.Select(w => w.Accent).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var ws = new Workspace
@@ -582,12 +601,12 @@ public sealed class SettingsWindow : Window
     private FrameworkElement Automatic(Workspace ws)
     {
         var box = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        box.Children.Add(Ui.Text("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Una carpeta cuenta todo lo que se abra dentro de ella. Un programa puede estar en varios espacios: si ya estás en uno de ellos, no cambia.", size: 12, wrap: true));
+        box.Children.Add(Ui.Text(Loc.T("Se abre solo: en este horario (días marcados, o todos) o al usar estos programas. Una carpeta cuenta todo lo que se abra dentro de ella. Un programa puede estar en varios espacios: si ya estás en uno de ellos, no cambia."), size: 12, wrap: true));
 
         var hours = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
         var from = Ui.TimeBox(ws.ScheduleFrom);
         var to = Ui.TimeBox(ws.ScheduleTo);
-        from.ToolTip = to.ToolTip = "La misma hora en los dos = sin horario";
+        from.ToolTip = to.ToolTip = Loc.T("La misma hora en los dos = sin horario");
         var status = Ui.Text("", size: 12);
         status.VerticalAlignment = VerticalAlignment.Center;
         status.Margin = new Thickness(10, 0, 0, 0);
@@ -595,21 +614,21 @@ public sealed class SettingsWindow : Window
         {
             if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(from.Text), out var ta) || !AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(to.Text), out var tb))
             {
-                status.Text = "esa hora no existe"; // half typed: keep the last good hours
+                status.Text = Loc.T("esa hora no existe"); // half typed: keep the last good hours
                 return;
             }
-            if (ta == tb) { ws.ScheduleFrom = ws.ScheduleTo = null; status.Text = "sin horario"; }
+            if (ta == tb) { ws.ScheduleFrom = ws.ScheduleTo = null; status.Text = Loc.T("sin horario"); }
             else
             {
                 ws.ScheduleFrom = ta.ToString(@"hh\:mm");
                 ws.ScheduleTo = tb.ToString(@"hh\:mm");
-                status.Text = ta > tb ? "pasa la medianoche" : "";
+                status.Text = ta > tb ? Loc.T("pasa la medianoche") : "";
             }
             Notify(ChangeKind.WorkspaceList);
         }
         from.TextChanged += (_, _) => SaveHours();
         to.TextChanged += (_, _) => SaveHours();
-        var fromLabel = WithMargin(Ui.Text("De", size: 13), 0, 0, 8, 0);
+        var fromLabel = WithMargin(Ui.Text(Loc.T("De"), size: 13), 0, 0, 8, 0);
         fromLabel.VerticalAlignment = VerticalAlignment.Center;
         hours.Children.Add(fromLabel);
         hours.Children.Add(from);
@@ -626,7 +645,7 @@ public sealed class SettingsWindow : Window
             chip.MinWidth = 0;
             chip.Padding = new Thickness(9, 4, 9, 4);
             chip.Margin = new Thickness(0, 0, 4, 0);
-            chip.ToolTip = Ui.Capitalize(Ui.Culture.DateTimeFormat.GetDayName(day)) + " (sin ninguno marcado: todos los días)";
+            chip.ToolTip = Ui.Capitalize(Ui.Culture.DateTimeFormat.GetDayName(day)) + Loc.T(" (sin ninguno marcado: todos los días)");
             chip.Click += (_, _) =>
             {
                 var list = ws.ScheduleDays ?? [];
@@ -652,7 +671,7 @@ public sealed class SettingsWindow : Window
             ws.Apps = AutoSwitch.ParseApps(apps.Text);
             Notify(ChangeKind.WorkspaceList);
         };
-        box.Children.Add(Ui.WithPlaceholder(apps, "Al usar estos programas o carpetas: steam, discord, D:\\Juegos…"));
+        box.Children.Add(Ui.WithPlaceholder(apps, Loc.T("Al usar estos programas o carpetas: steam, discord, D:\\Juegos…")));
         return box;
     }
 
@@ -672,23 +691,23 @@ public sealed class SettingsWindow : Window
 
     private void Hotkeys()
     {
-        Heading("Atajos de teclado", "Funcionan en todo Windows. Pulsa un atajo para cambiarlo: Supr lo quita y Esc cancela.");
+        Heading(Loc.T("Atajos de teclado"), Loc.T("Funcionan en todo Windows. Pulsa un atajo para cambiarlo: Supr lo quita y Esc cancela."));
         foreach (var action in HotkeyActions.Defaults.Keys)
         {
             var label = HotkeyActions.Label(action);
             if (action.StartsWith("workspace", StringComparison.Ordinal)
                 && int.TryParse(action["workspace".Length..], out var n) && n <= Config.Workspaces.Count)
-                label = $"Ir a «{Config.Workspaces[n - 1].Name}»";
+                label = Loc.T("Ir a «{0}»", Config.Workspaces[n - 1].Name);
             var failed = _s.FailedHotkeys.Contains(action);
             var current = Config.Hotkeys.GetValueOrDefault(action) ?? "";
-            var button = Ui.Pill(current.Length == 0 ? "Sin atajo" : current, () => { });
+            var button = Ui.Pill(current.Length == 0 ? Loc.T("Sin atajo") : current, () => { });
             button.MinWidth = 150;
             button.Click += (_, _) => BeginCapture(action, button);
-            var card = Card(label, failed ? "Otra app ya usa este atajo; elige otro." : null, button);
+            var card = Card(label, failed ? Loc.T("Otra app ya usa este atajo; elige otro.") : null, button);
             if (failed && ((Grid)((StackPanel)card.Child).Children[0]).Children[0] is StackPanel texts && texts.Children.Count > 1)
                 ((TextBlock)texts.Children[1]).Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x7A, 0x7A));
         }
-        var reset = Ui.Pill("Restablecer los atajos", () =>
+        var reset = Ui.Pill(Loc.T("Restablecer los atajos"), () =>
         {
             Config.Hotkeys = new Dictionary<string, string>(HotkeyActions.Defaults);
             Notify(ChangeKind.Hotkeys);
@@ -704,7 +723,7 @@ public sealed class SettingsWindow : Window
         EndCapture();
         // Otherwise pressing the current shortcut would run it instead of being recorded.
         _s.Hotkeys?.UnregisterAll();
-        button.Content = "Pulsa el atajo…";
+        button.Content = Loc.T("Pulsa el atajo…");
         button.Style = Ui.Style("AccentPillButton");
         _capture = (_, e) =>
         {
@@ -725,7 +744,7 @@ public sealed class SettingsWindow : Window
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Windows)) mods |= HotkeyModifiers.Win;
                 if (!HotkeyGesture.TryParse(new HotkeyGesture(mods, key.ToString()).ToString(), out var gesture))
                 {
-                    button.Content = "Usa Ctrl, Alt o Win con otra tecla";
+                    button.Content = Loc.T("Usa Ctrl, Alt o Win con otra tecla");
                     return;
                 }
                 // One shortcut, one action: take it from whoever had it.
@@ -747,24 +766,60 @@ public sealed class SettingsWindow : Window
         Notify(ChangeKind.Hotkeys); // registers the shortcuts again
     }
 
+    // Plugins run as code inside SackSpace: each one is off until the user turns it on, and the change waits for a restart.
+    private void Plugins()
+    {
+        var g = Config.General;
+        Group(Loc.T("Widgets de terceros"));
+        Card(Loc.T("Plugins"), Loc.T("Copia la carpeta de un plugin en «plugins», dentro de la carpeta de datos, y actívalo aquí. Un plugin es un programa que corre dentro de SackSpace con tus permisos: activa solo los que vengan de alguien de confianza."),
+            Ui.Pill(Loc.T("Abrir la carpeta"), () =>
+            {
+                Directory.CreateDirectory(SackSpace.Widgets.PluginLoader.Folder(_s.DataFolder));
+                Open(SackSpace.Widgets.PluginLoader.Folder(_s.DataFolder));
+            }, glyph: Glyphs.Folder));
+        var found = _s.Plugins.Select(p => p.Name)
+            .Concat(Directory.Exists(SackSpace.Widgets.PluginLoader.Folder(_s.DataFolder)) ? Directory.EnumerateDirectories(SackSpace.Widgets.PluginLoader.Folder(_s.DataFolder)).Select(Path.GetFileName).OfType<string>() : [])
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase);
+        var pending = false;
+        foreach (var name in found)
+        {
+            var info = _s.Plugins.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            var on = g.Plugins.Contains(name);
+            pending |= on != (info?.Enabled ?? false);
+            var text = info is null || on != info.Enabled ? Loc.T("Se aplica al reiniciar SackSpace.")
+                : info.Error ?? (info.Enabled ? string.Join(", ", info.Widgets) : Loc.T("Apagado."));
+            Card(name, text, Toggle(on, v =>
+            {
+                g.Plugins.RemoveAll(p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+                if (v) g.Plugins.Add(name);
+                Notify(ChangeKind.General);
+                Refresh();
+            }));
+        }
+        if (pending)
+            _page.Children.Add(WithMargin(Ui.Pill(Loc.T("Reiniciar"), () => ((App)Application.Current).Restart(), accent: true, glyph: Glyphs.Refresh), 0, 0, 0, 8));
+    }
+
     private void Data()
     {
-        Heading("Datos y privacidad");
+        Heading(Loc.T("Datos y privacidad"));
         var path = new TextBox { Text = _s.DataFolder, IsReadOnly = true, Style = Ui.Style("GlassTextBox"), FontSize = 12.5, Margin = new Thickness(0, 8, 0, 0) };
         path.SetResourceReference(ForegroundProperty, "TextSecondaryBrush");
-        Card("Todo se queda en este equipo",
-            "SackSpace no tiene cuentas ni envía estadísticas. Solo salen a internet el widget de Clima, a Open-Meteo con la ciudad que escribas; el de Uso de IA, a Anthropic con tu sesión de Claude Code; y, una vez al día, la pregunta a GitHub de si hay versión nueva (se apaga en General). Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:",
+        Card(Loc.T("Todo se queda en este equipo"),
+            Loc.T("SackSpace no tiene cuentas ni envía estadísticas. Solo salen a internet el widget de Clima, a Open-Meteo con la ciudad que escribas; el de Uso de IA, a Anthropic con tu sesión de Claude Code; y, una vez al día, la pregunta a GitHub de si hay versión nueva (se apaga en General). Tus espacios, notas y tareas se guardan en esta carpeta, con una copia de seguridad automática del último cambio:"),
             null, path);
 
         var tools = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-        tools.Children.Add(WithMargin(Ui.Pill("Abrir la carpeta", () => Open(_s.DataFolder), glyph: Glyphs.Folder), 0, 0, 8, 8));
-        tools.Children.Add(WithMargin(Ui.Pill("Exportar una copia…", Export, glyph: Glyphs.Document), 0, 0, 8, 8));
-        tools.Children.Add(WithMargin(Ui.Pill("Importar una copia…", Import, glyph: Glyphs.Undo), 0, 0, 8, 8));
+        tools.Children.Add(WithMargin(Ui.Pill(Loc.T("Abrir la carpeta"), () => Open(_s.DataFolder), glyph: Glyphs.Folder), 0, 0, 8, 8));
+        tools.Children.Add(WithMargin(Ui.Pill(Loc.T("Exportar una copia…"), Export, glyph: Glyphs.Document), 0, 0, 8, 8));
+        tools.Children.Add(WithMargin(Ui.Pill(Loc.T("Importar una copia…"), Import, glyph: Glyphs.Undo), 0, 0, 8, 8));
         _page.Children.Add(tools);
 
-        Group("Empezar de cero");
-        Card("Restablecer SackSpace", "Vuelve a los cuatro espacios de ejemplo y a los ajustes de fábrica. Exporta una copia antes si quieres guardar lo tuyo.",
-            Confirm("Restablecer", "¿Seguro? Pulsa otra vez", () =>
+        Plugins();
+
+        Group(Loc.T("Empezar de cero"));
+        Card(Loc.T("Restablecer SackSpace"), Loc.T("Vuelve a los cuatro espacios de ejemplo y a los ajustes de fábrica. Exporta una copia antes si quieres guardar lo tuyo."),
+            Confirm(Loc.T("Restablecer"), Loc.T("¿Seguro? Pulsa otra vez"), () =>
             {
                 _s.Session.Replace(_s.CreateDefault());
                 Refresh();
@@ -775,9 +830,9 @@ public sealed class SettingsWindow : Window
     {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Exportar una copia de SackSpace",
+            Title = Loc.T("Exportar una copia de SackSpace"),
             FileName = $"sackspace-{DateTime.Now:yyyy-MM-dd}.json",
-            Filter = "Copia de SackSpace (*.json)|*.json",
+            Filter = Loc.T("Copia de SackSpace (*.json)|*.json"),
         };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -786,13 +841,13 @@ public sealed class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "No se pudo guardar la copia: " + ex.Message, "SackSpace", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, Loc.T("No se pudo guardar la copia: ") + ex.Message, "SackSpace", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private void Import()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Importar una copia de SackSpace", Filter = "Copia de SackSpace (*.json)|*.json" };
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = Loc.T("Importar una copia de SackSpace"), Filter = Loc.T("Copia de SackSpace (*.json)|*.json") };
         if (dialog.ShowDialog(this) != true) return;
         AppConfig? imported = null;
         try
@@ -802,7 +857,7 @@ public sealed class SettingsWindow : Window
         catch (Exception ex) { Log.Warn("No se pudo leer la copia", ex); }
         if (imported is null)
         {
-            MessageBox.Show(this, "Ese archivo no es una copia válida de SackSpace.", "SackSpace", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, Loc.T("Ese archivo no es una copia válida de SackSpace."), "SackSpace", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         _s.Session.Replace(ConfigStore.Normalize(imported));
@@ -812,17 +867,17 @@ public sealed class SettingsWindow : Window
     private void About()
     {
         var version = Assembly.GetEntryAssembly()?.GetName().Version;
-        Heading("Acerca de");
+        Heading(Loc.T("Acerca de"));
         var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 18) };
         head.Children.Add(new Image { Source = Icon, Width = 56, Height = 56, Margin = new Thickness(0, 0, 18, 0) });
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock { Text = "SackSpace", FontSize = 22, FontWeight = FontWeights.SemiBold });
-        names.Children.Add(Ui.Text($"Versión {version?.ToString(3) ?? "?"} · Hecho por Sackito", size: 13));
+        names.Children.Add(Ui.Text(Loc.T("Versión {0} · Hecho por Sackito", version?.ToString(3) ?? "?"), size: 13));
         head.Children.Add(names);
         _page.Children.Add(head);
-        Card("Tu escritorio, ordenado por espacios", "Paneles de cristal con reloj, calendario, notas, tareas, monitor del sistema, reproductor y accesos, separados en espacios para cada momento del día.", null);
-        Card("Registro de errores", "Si algo falla, este archivo ayuda a entender qué pasó. No guarda nada personal.",
-            Ui.Pill("Abrir el registro", () => Open(Path.Combine(_s.DataFolder, "logs", "sackspace.log"))));
+        Card(Loc.T("Tu escritorio, ordenado por espacios"), Loc.T("Paneles de cristal con reloj, calendario, notas, tareas, monitor del sistema, reproductor y accesos, separados en espacios para cada momento del día."), null);
+        Card(Loc.T("Registro de errores"), Loc.T("Si algo falla, este archivo ayuda a entender qué pasó. No guarda nada personal."),
+            Ui.Pill(Loc.T("Abrir el registro"), () => Open(Path.Combine(_s.DataFolder, "logs", "sackspace.log"))));
     }
 
     private static void Open(string path)

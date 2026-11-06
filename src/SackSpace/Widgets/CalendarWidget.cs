@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,7 +15,7 @@ public sealed class CalendarWidget : Grid, IDisposable
 {
     private readonly WidgetContext _c;
     private readonly bool _weeks;
-    private readonly TextBlock _title = new() { FontSize = 15, Cursor = System.Windows.Input.Cursors.Hand, ToolTip = "Volver a hoy" };
+    private readonly TextBlock _title = new() { FontSize = 15, Cursor = System.Windows.Input.Cursors.Hand, ToolTip = Loc.T("Volver a hoy") };
     private readonly UniformGrid _names, _days;
     private DateTime _month;
 
@@ -34,8 +35,8 @@ public sealed class CalendarWidget : Grid, IDisposable
         _title.Style = Ui.Style("Title");
         _title.MouseLeftButtonUp += (_, _) => Go(FirstOfMonth(DateTime.Today));
         var header = Ui.Header(Glyphs.Calendar, "",
-            Ui.IconButton(Glyphs.ChevronLeft, "Mes anterior", () => Go(_month.AddMonths(-1)), 28),
-            Ui.IconButton(Glyphs.ChevronRight, "Mes siguiente", () => Go(_month.AddMonths(1)), 28));
+            Ui.IconButton(Glyphs.ChevronLeft, Loc.T("Mes anterior"), () => Go(_month.AddMonths(-1)), 28),
+            Ui.IconButton(Glyphs.ChevronRight, Loc.T("Mes siguiente"), () => Go(_month.AddMonths(1)), 28));
         header.Children.RemoveAt(header.Children.Count - 1);
         header.Tag = null; // month navigation, not a title
         header.Children.Add(_title);

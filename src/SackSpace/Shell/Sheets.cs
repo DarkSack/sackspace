@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -27,7 +28,7 @@ public abstract class SheetBase : Border
         MaxHeight = host.AreaSize.Height * 0.8;
 
         var dock = new DockPanel();
-        var header = Ui.Header(glyph, title, Ui.IconButton(Glyphs.Close, "Cerrar", host.CloseSheet));
+        var header = Ui.Header(glyph, title, Ui.IconButton(Glyphs.Close, Loc.T("Cerrar"), host.CloseSheet));
         ((TextBlock)header.Children[^1]).FontSize = 17;
         header.Margin = new Thickness(0, 0, 0, 16);
         DockPanel.SetDock(header, Dock.Top);
@@ -43,7 +44,7 @@ public abstract class SheetBase : Border
 /// <summary>"Añadir widget": every registered widget, and the panels hidden in this workspace.</summary>
 public sealed class GallerySheet : SheetBase
 {
-    public GallerySheet(HostView host) : base(host, Glyphs.Add, "Añadir widget", 600)
+    public GallerySheet(HostView host) : base(host, Glyphs.Add, Loc.T("Añadir widget"), 600)
     {
         var grid = new UniformGrid { Columns = 2 };
         foreach (var d in WidgetRegistry.All) grid.Children.Add(Card(d));
@@ -51,12 +52,12 @@ public sealed class GallerySheet : SheetBase
 
         var hidden = host.CurrentWorkspace?.Panels.Where(p => p.Hidden).ToList() ?? [];
         if (hidden.Count == 0) return;
-        Body.Children.Add(Section("Ocultos en este espacio"));
+        Body.Children.Add(Section(Loc.T("Ocultos en este espacio")));
         foreach (var panel in hidden)
         {
             var d = WidgetRegistry.Find(panel.Widget)?.Descriptor;
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-            var show = Ui.Pill("Mostrar aquí", () => { host.RestorePanel(panel); host.CloseSheet(); }, glyph: Glyphs.View);
+            var show = Ui.Pill(Loc.T("Mostrar aquí"), () => { host.RestorePanel(panel); host.CloseSheet(); }, glyph: Glyphs.View);
             DockPanel.SetDock(show, Dock.Right);
             row.Children.Add(show);
             var icon = Ui.Glyph(d?.Glyph ?? Glyphs.Info, 16);
@@ -95,7 +96,7 @@ public sealed class GallerySheet : SheetBase
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Stretch,
             Template = BareButton(),
-            ToolTip = "Añadir a este espacio",
+            ToolTip = Loc.T("Añadir a este espacio"),
         };
         card.MouseEnter += (_, _) => face.SetResourceReference(BackgroundProperty, "PressedBrush");
         card.MouseLeave += (_, _) => face.SetResourceReference(BackgroundProperty, "HoverBrush");
@@ -119,7 +120,7 @@ public sealed class WidgetSettingsSheet : SheetBase
     private readonly PanelHost _panel;
 
     public WidgetSettingsSheet(PanelHost panel, HostView host)
-        : base(host, panel.Descriptor.Glyph, "Opciones · " + panel.Descriptor.Name, 440)
+        : base(host, panel.Descriptor.Glyph, Loc.T("Opciones") + " · " + panel.Descriptor.Name, 440)
     {
         _panel = panel;
         var settings = panel.Panel.Settings;
@@ -178,7 +179,7 @@ public sealed class WidgetSettingsSheet : SheetBase
         }
         AddLook(panel);
 
-        var done = Ui.Pill("Listo", host.CloseSheet, accent: true);
+        var done = Ui.Pill(Loc.T("Listo"), host.CloseSheet, accent: true);
         done.HorizontalAlignment = HorizontalAlignment.Right;
         done.Margin = new Thickness(0, 8, 0, 0);
         Body.Children.Add(done);
@@ -190,14 +191,14 @@ public sealed class WidgetSettingsSheet : SheetBase
     private void AddLook(PanelHost panel)
     {
         var p = panel.Panel;
-        if (panel.Descriptor.Settings.Count > 0) Body.Children.Add(Section("Panel"));
+        if (panel.Descriptor.Settings.Count > 0) Body.Children.Add(Section(Loc.T("Panel")));
 
-        Body.Children.Add(Label("Color del cristal"));
+        Body.Children.Add(Label(Loc.T("Color del cristal")));
         var colors = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         void Colors()
         {
             colors.Children.Clear();
-            var auto = Ui.Pill("Del tema", () => { p.Tint = null; Changed(); Colors(); }, accent: p.Tint is null);
+            var auto = Ui.Pill(Loc.T("Del tema"), () => { p.Tint = null; Changed(); Colors(); }, accent: p.Tint is null);
             auto.Margin = new Thickness(0, 0, 8, 6);
             colors.Children.Add(auto);
             foreach (var hex in Settings.SettingsWindow.Swatches.Prepend("#FFFFFF").Prepend("#000000"))
@@ -208,7 +209,7 @@ public sealed class WidgetSettingsSheet : SheetBase
         Body.Children.Add(colors);
 
         var theme = Host.Services.Theme.Current.GlassOpacity;
-        string Shown(double? v) => v is { } o ? $"Opacidad: {o * 100:0} %" : $"Opacidad: la del tema ({theme * 100:0} %)";
+        string Shown(double? v) => v is { } o ? Loc.T("Opacidad: {0:0} %", o * 100) : Loc.T("Opacidad: la del tema ({0:0} %)", theme * 100);
         var label = Label(Shown(p.Opacity));
         Body.Children.Add(label);
         var slider = new Slider
@@ -224,7 +225,7 @@ public sealed class WidgetSettingsSheet : SheetBase
         };
         Body.Children.Add(slider);
 
-        var title = new CheckBox { Content = "Mostrar el título", Style = Ui.Style("ToggleSwitch"), IsChecked = !p.HideTitle, Margin = new Thickness(0, 6, 0, 10), FontSize = 14 };
+        var title = new CheckBox { Content = Loc.T("Mostrar el título"), Style = Ui.Style("ToggleSwitch"), IsChecked = !p.HideTitle, Margin = new Thickness(0, 6, 0, 10), FontSize = 14 };
         title.Click += (_, _) =>
         {
             p.HideTitle = title.IsChecked != true;

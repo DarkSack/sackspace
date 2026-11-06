@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -59,16 +60,16 @@ public sealed class TrayIcon : IDisposable
         foreach (var ws in _s.Session.Config.Workspaces)
             menu.Items.Add(Ui.Item(ws.Name, ws.Icon, () => hosts.SwitchTo(ws.Id), ws.Id == _s.Session.Config.ActiveWorkspace?.Id));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Ui.Item(hosts.IsRaised ? "Bajar los paneles" : "Ver los paneles encima", Glyphs.View, hosts.ToggleRaised));
-        menu.Items.Add(Ui.Item("Buscar y abrir…", Glyphs.Search, () => ((App)Application.Current).OpenSearch()));
-        menu.Items.Add(Ui.Item("Editar el diseño", Glyphs.Edit, () => hosts.SetEditing(true)));
-        menu.Items.Add(Ui.Item("Ajustes", Glyphs.Settings, () => hosts.OpenSettings()));
+        menu.Items.Add(Ui.Item(hosts.IsRaised ? Loc.T("Bajar los paneles") : Loc.T("Ver los paneles encima"), Glyphs.View, hosts.ToggleRaised));
+        menu.Items.Add(Ui.Item(Loc.T("Buscar y abrir…"), Glyphs.Search, () => ((App)Application.Current).OpenSearch()));
+        menu.Items.Add(Ui.Item(Loc.T("Editar el diseño"), Glyphs.Edit, () => hosts.SetEditing(true)));
+        menu.Items.Add(Ui.Item(Loc.T("Ajustes"), Glyphs.Settings, () => hosts.OpenSettings()));
         var app = (App)Application.Current;
         menu.Items.Add(_s.Updates?.Available is { } update
-            ? Ui.Item($"Actualizar a la {update.Version.ToString(3)}", Glyphs.Refresh, () => app.InstallUpdate(update))
-            : Ui.Item("Buscar actualizaciones", Glyphs.Refresh, app.CheckForUpdates));
+            ? Ui.Item(Loc.T("Actualizar a la {0}", update.Version.ToString(3)), Glyphs.Refresh, () => app.InstallUpdate(update))
+            : Ui.Item(Loc.T("Buscar actualizaciones"), Glyphs.Refresh, app.CheckForUpdates));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Ui.Item("Salir de SackSpace", Glyphs.Power, _exit));
+        menu.Items.Add(Ui.Item(Loc.T("Salir de SackSpace"), Glyphs.Power, _exit));
         // The menu only closes on an outside click if our process is in the foreground.
         if (hosts.Hosts.FirstOrDefault() is { Handle: var h } && h != IntPtr.Zero) Native.SetForegroundWindow(h);
         menu.IsOpen = true;

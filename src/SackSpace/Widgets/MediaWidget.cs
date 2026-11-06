@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -44,10 +45,10 @@ public sealed class MediaWidget : Grid, IDisposable
         _track.SizeChanged += (_, _) => UpdateProgress();
 
         var media = c.Services.Media;
-        _prev = Ui.IconButton(Glyphs.Previous, "Anterior", media.Previous, 34);
+        _prev = Ui.IconButton(Glyphs.Previous, Loc.T("Anterior"), media.Previous, 34);
         _play = new Button { Style = Ui.Style("AccentIconButton"), Content = Glyphs.Play, ToolTip = "Reproducir o pausar", Margin = new Thickness(6, 0, 6, 0) };
         _play.Click += (_, _) => media.PlayPause();
-        _next = Ui.IconButton(Glyphs.Next, "Siguiente", media.Next, 34);
+        _next = Ui.IconButton(Glyphs.Next, Loc.T("Siguiente"), media.Next, 34);
         _controls.Children.Add(_prev);
         _controls.Children.Add(_play);
         _controls.Children.Add(_next);
@@ -78,8 +79,8 @@ public sealed class MediaWidget : Grid, IDisposable
         var s = _c.Services.Media.State;
         if (s is null)
         {
-            _title.Text = "No suena nada";
-            _artist.Text = "Pon música en Spotify, el navegador o cualquier app.";
+            _title.Text = Loc.T("No suena nada");
+            _artist.Text = Loc.T("Pon música en Spotify, el navegador o cualquier app.");
             _artist.TextWrapping = TextWrapping.Wrap;
             _app.Text = "";
             _art.Background = null;
@@ -89,7 +90,7 @@ public sealed class MediaWidget : Grid, IDisposable
             Tick(false);
             return;
         }
-        _title.Text = s.Title.Length > 0 ? s.Title : "Sin título";
+        _title.Text = s.Title.Length > 0 ? s.Title : Loc.T("Sin título");
         _artist.Text = s.Artist;
         _artist.TextWrapping = TextWrapping.NoWrap;
         _app.Text = s.AppName;

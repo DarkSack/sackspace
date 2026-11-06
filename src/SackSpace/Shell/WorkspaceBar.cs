@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -48,12 +49,12 @@ public sealed class WorkspaceBar : UserControl
         track.Children.Add(_indicator);
         track.Children.Add(_chips);
 
-        _editButton = Ui.IconButton(Glyphs.Edit, "Editar el diseño", () => _manager.SetEditing(!_manager.IsEditing), 36);
+        _editButton = Ui.IconButton(Glyphs.Edit, Loc.T("Editar el diseño"), () => _manager.SetEditing(!_manager.IsEditing), 36);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6) };
         row.Children.Add(track);
         row.Children.Add(new Border { Width = 1, Height = 20, Margin = new Thickness(8, 0, 6, 0), Background = Ui.Brush("DividerBrush") });
         row.Children.Add(_editButton);
-        row.Children.Add(Ui.IconButton(Glyphs.Settings, "Ajustes", () => _manager.OpenSettings(), 36));
+        row.Children.Add(Ui.IconButton(Glyphs.Settings, Loc.T("Ajustes"), () => _manager.OpenSettings(), 36));
         root.Children.Add(row);
 
         var outline = new Border { CornerRadius = radius, BorderThickness = new Thickness(1), IsHitTestVisible = false };
@@ -88,7 +89,7 @@ public sealed class WorkspaceBar : UserControl
         {
             var ws = config.Workspaces[i];
             var icon = new TextBlock { Text = ws.Icon, Style = Ui.Style("Icon"), FontSize = 13, Margin = new Thickness(0, 0, 8, 0) };
-            var name = new TextBlock { Text = ws.Name, FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+            var name = new TextBlock { Text = Loc.T(ws.Name), FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             content.Children.Add(icon);
             content.Children.Add(name);
@@ -101,10 +102,10 @@ public sealed class WorkspaceBar : UserControl
                 Tag = ws.Id,
             };
             var shortcut = config.Hotkeys.GetValueOrDefault(HotkeyActions.Workspace(i + 1));
-            chip.ToolTip = string.IsNullOrEmpty(shortcut) ? ws.Name : $"{ws.Name} · {shortcut}";
+            chip.ToolTip = string.IsNullOrEmpty(shortcut) ? Loc.T(ws.Name) : $"{Loc.T(ws.Name)} · {shortcut}";
             chip.Click += (_, _) => _manager.SwitchTo(ws.Id);
             chip.ContextMenu = new ContextMenu();
-            chip.ContextMenu.Items.Add(Ui.Item("Personalizar los espacios…", Glyphs.Edit, () => _manager.OpenSettings("espacios")));
+            chip.ContextMenu.Items.Add(Ui.Item(Loc.T("Personalizar los espacios…"), Glyphs.Edit, () => _manager.OpenSettings("espacios")));
             _chips.Children.Add(chip);
         }
         _placed = false;
@@ -146,7 +147,7 @@ public sealed class WorkspaceBar : UserControl
     public void SetEditing(bool editing)
     {
         _editButton.Content = editing ? Glyphs.Accept : Glyphs.Edit;
-        _editButton.ToolTip = editing ? "Listo" : "Editar el diseño";
+        _editButton.ToolTip = editing ? Loc.T("Listo") : Loc.T("Editar el diseño");
     }
 
     public void UpdateGlass()

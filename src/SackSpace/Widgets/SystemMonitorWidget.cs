@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,9 +19,9 @@ public sealed class SystemMonitorWidget : Grid, IDisposable
     {
         _c = c;
         var sampler = c.Services.System;
-        _cpu = new Meter("Procesador", () => sampler.CpuHistory);
-        _ram = new Meter("Memoria", () => sampler.RamHistory);
-        if (c.Settings.GetBool("gpu", false)) _gpu = new Meter("Gráfica", () => sampler.GpuHistory);
+        _cpu = new Meter(Loc.T("Procesador"), () => sampler.CpuHistory);
+        _ram = new Meter(Loc.T("Memoria"), () => sampler.RamHistory);
+        if (c.Settings.GetBool("gpu", false)) _gpu = new Meter(Loc.T("Gráfica"), () => sampler.GpuHistory);
         Meter.Stack(this, _gpu is null ? [_cpu, _ram] : [_cpu, _ram, _gpu]);
 
         sampler.Sampled += Show;
@@ -32,7 +33,7 @@ public sealed class SystemMonitorWidget : Grid, IDisposable
     {
         _cpu.Set($"{s.Cpu * 100:0} %", "");
         const double gb = 1024d * 1024 * 1024;
-        _ram.Set($"{s.Ram * 100:0} %", string.Format(Ui.Culture, "{0:0.0} de {1:0} GB", s.UsedBytes / gb, s.TotalBytes / gb));
+        _ram.Set($"{s.Ram * 100:0} %", string.Format(Ui.Culture, Loc.T("{0:0.0} de {1:0} GB"), s.UsedBytes / gb, s.TotalBytes / gb));
         _gpu?.Set(s.Gpu is { } g ? $"{g * 100:0} %" : "—", "");
     }
 

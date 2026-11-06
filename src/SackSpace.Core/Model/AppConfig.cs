@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Text.Json.Nodes;
 
 namespace SackSpace.Core.Model;
@@ -21,6 +22,9 @@ public sealed class AppConfig
     /// <summary>Action id (see HotkeyActions) → gesture such as "Ctrl+Alt+Space". Empty = off.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = new();
 
+    /// <summary>Seconds played per game and day (see Widgets.PlayTime). Kept only on this PC's config.</summary>
+    public System.Text.Json.Nodes.JsonObject PlayTime { get; set; } = new();
+
     [System.Text.Json.Serialization.JsonIgnore]
     public Workspace? ActiveWorkspace =>
         Workspaces.FirstOrDefault(w => w.Id == ActiveWorkspaceId) ?? Workspaces.FirstOrDefault();
@@ -43,6 +47,12 @@ public sealed class GeneralSettings
     public bool RestBehindWindows { get; set; } = true;
     /// <summary>Once a day, ask GitHub whether a newer SackSpace was published.</summary>
     public bool CheckUpdates { get; set; } = true;
+    /// <summary>Keep a list of the user's files (in the data folder) so the search finds them.</summary>
+    public bool FileSearch { get; set; } = true;
+    /// <summary>"auto" follows Windows; otherwise a code from Loc.Languages.</summary>
+    public string Language { get; set; } = "auto";
+    /// <summary>Folder names in &lt;data&gt;\plugins the user allowed to run.</summary>
+    public List<string> Plugins { get; set; } = [];
 }
 
 public enum AccentMode
@@ -76,7 +86,7 @@ public sealed class AppearanceSettings
 public sealed class Workspace
 {
     public string Id { get; set; } = NewId();
-    public string Name { get; set; } = "Espacio";
+    public string Name { get; set; } = Loc.T("Espacio");
     /// <summary>Segoe Fluent Icons glyph, as text.</summary>
     public string Icon { get; set; } = Glyphs.Home;
     public string Accent { get; set; } = "#7C9CFF";

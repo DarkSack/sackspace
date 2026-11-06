@@ -76,5 +76,8 @@ public static class WidgetRegistry
         Register(new WidgetFactory(D(BuiltInWidgets.Usage), c => new AiUsageWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Storage), c => new StorageWidget(c)));
         Register(new WidgetFactory(D(BuiltInWidgets.Obs), c => new ObsWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.PlayTime), c => new PlayTimeWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Twitch), c => new TwitchWidget(c)));
+        Register(new WidgetFactory(D(BuiltInWidgets.Clipboard), c => new ClipboardWidget(c)));
     }
 }

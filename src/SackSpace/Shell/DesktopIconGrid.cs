@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -103,13 +104,13 @@ public sealed class DesktopIconGrid : WrapPanel
     private ContextMenu Menu(DesktopItem item)
     {
         var menu = new ContextMenu();
-        menu.Items.Add(Ui.Item("Abrir", Glyphs.View, () => Open(item)));
+        menu.Items.Add(Ui.Item(Loc.T("Abrir"), Glyphs.View, () => Open(item)));
         if (Path.GetExtension(item.Path).ToLowerInvariant() is ".lnk" or ".exe" or ".bat" or ".cmd" or ".msi")
-            menu.Items.Add(Ui.Item("Ejecutar como administrador", Glyphs.Shield, () => RunAsAdmin(item)));
+            menu.Items.Add(Ui.Item(Loc.T("Ejecutar como administrador"), Glyphs.Shield, () => RunAsAdmin(item)));
         if (!item.Path.StartsWith("::"))
-            menu.Items.Add(Ui.Item("Abrir su ubicación", Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
+            menu.Items.Add(Ui.Item(Loc.T("Abrir su ubicación"), Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(new MenuItem { Header = "Se ve en estos espacios:", IsEnabled = false });
+        menu.Items.Add(new MenuItem { Header = Loc.T("Se ve en estos espacios:"), IsEnabled = false });
         var icons = _host.Services.Icons;
         foreach (var ws in _host.Services.Session.Config.Workspaces)
         {
@@ -117,20 +118,20 @@ public sealed class DesktopIconGrid : WrapPanel
             menu.Items.Add(Ui.Item(ws.Name, shows ? Glyphs.Accept : null, () => icons.Choose(ws, item.Path, !shows), isChecked: shows));
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(Ui.Item("Elegir los iconos de este espacio…", Glyphs.Edit, () => _host.OpenSheet(new DesktopIconsSheet(_host, _ws))));
+        menu.Items.Add(Ui.Item(Loc.T("Elegir los iconos de este espacio…"), Glyphs.Edit, () => _host.OpenSheet(new DesktopIconsSheet(_host, _ws))));
         return menu;
     }
 
     private void Open(DesktopItem item)
     {
-        if (!InstalledApps.Launch(item.Path, out var error)) _host.ShowSnackbar($"No se pudo abrir «{item.Name}»: {error}");
+        if (!InstalledApps.Launch(item.Path, out var error)) _host.ShowSnackbar(Loc.T("No se pudo abrir «{0}»: {1}", item.Name, error));
     }
 
     private void RunAsAdmin(DesktopItem item)
     {
         try { Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true, Verb = "runas" })?.Dispose(); }
         catch (System.ComponentModel.Win32Exception) { } // the user said no to the UAC prompt
-        catch (Exception ex) { _host.ShowSnackbar($"No se pudo abrir «{item.Name}»: {ex.Message}"); }
+        catch (Exception ex) { _host.ShowSnackbar(Loc.T("No se pudo abrir «{0}»: {1}", item.Name, ex.Message)); }
     }
 
     private async void Load(Image image, string path)
@@ -160,24 +161,24 @@ public sealed class DesktopIconsSheet : SheetBase
     private readonly StackPanel _list = new();
     private readonly TextBox _search = new() { Style = Ui.Style("FieldTextBox") };
 
-    public DesktopIconsSheet(HostView host, Workspace ws) : base(host, Glyphs.Apps, $"Iconos del escritorio · {ws.Name}", 480)
+    public DesktopIconsSheet(HostView host, Workspace ws) : base(host, Glyphs.Apps, Loc.T("Iconos del escritorio · {0}", ws.Name), 480)
     {
         _ws = ws;
         Height = Math.Min(640, host.AreaSize.Height * 0.85);
-        var hint = Ui.Text("Solo se ven en este espacio los iconos marcados. Lo que guardes en el escritorio aparece en el espacio en el que estés.", wrap: true);
+        var hint = Ui.Text(Loc.T("Solo se ven en este espacio los iconos marcados. Lo que guardes en el escritorio aparece en el espacio en el que estés."), wrap: true);
         hint.Margin = new Thickness(0, 0, 0, 12);
         Body.Children.Add(hint);
 
         var tools = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
-        var none = Ui.Pill("Ninguno", () => { Host.Services.Icons.ChooseAll(_ws, false); Fill(); });
-        var all = Ui.Pill("Todos", () => { Host.Services.Icons.ChooseAll(_ws, true); Fill(); });
+        var none = Ui.Pill(Loc.T("Ninguno"), () => { Host.Services.Icons.ChooseAll(_ws, false); Fill(); });
+        var all = Ui.Pill(Loc.T("Todos"), () => { Host.Services.Icons.ChooseAll(_ws, true); Fill(); });
         none.Margin = all.Margin = new Thickness(8, 0, 0, 0);
         DockPanel.SetDock(none, Dock.Right);
         DockPanel.SetDock(all, Dock.Right);
         tools.Children.Add(none);
         tools.Children.Add(all);
         _search.TextChanged += (_, _) => Fill();
-        tools.Children.Add(Ui.WithPlaceholder(_search, "Buscar"));
+        tools.Children.Add(Ui.WithPlaceholder(_search, Loc.T("Buscar")));
         Body.Children.Add(tools);
         Body.Children.Add(_list);
         Fill();
@@ -203,7 +204,7 @@ public sealed class DesktopIconsSheet : SheetBase
             row.Children.Add(new TextBlock { Text = item.Name, FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
             _list.Children.Add(row);
         }
-        if (_list.Children.Count == 0) _list.Children.Add(Ui.Text(icons.Items.Count == 0 ? "El escritorio está vacío." : "Nada coincide con la búsqueda."));
+        if (_list.Children.Count == 0) _list.Children.Add(Ui.Text(icons.Items.Count == 0 ? Loc.T("El escritorio está vacío.") : Loc.T("Nada coincide con la búsqueda.")));
     }
 
     private async void Load(Image image, string path)

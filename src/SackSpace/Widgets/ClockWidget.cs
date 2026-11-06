@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using SackSpace.Core.Widgets;
@@ -46,7 +47,7 @@ public sealed class ClockWidget : Grid, IDisposable
         _time.Text = now.ToString(_h24 ? "HH:mm" : "h:mm", Ui.Culture);
         _suffix.Text = (_seconds ? now.ToString("ss") : "") + (_h24 ? "" : (_seconds ? " " : "") + now.ToString("tt", Ui.Culture));
         _suffix.Visibility = _suffix.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _date.Text = Ui.Capitalize(now.ToString("dddd, d 'de' MMMM", Ui.Culture));
+        _date.Text = Ui.Capitalize(now.ToString(Loc.T("dddd, d 'de' MMMM"), Ui.Culture));
     }
 
     public void Dispose()

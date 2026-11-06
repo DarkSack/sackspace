@@ -104,7 +104,7 @@ public static partial class ShiftSchedule
     public static string Span(TimeSpan t)
     {
         var minutes = (int)Math.Ceiling(t.TotalMinutes);
-        if (minutes < 1) return "menos de 1 min";
+        if (minutes < 1) return Loc.T("menos de 1 min");
         return minutes >= 60 ? (minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes / 60} h {minutes % 60} min") : $"{minutes} min";
     }
 

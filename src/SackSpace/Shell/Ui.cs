@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,15 +9,14 @@ namespace SackSpace.Shell;
 /// <summary>Small builders for the views written in code, so they all look alike.</summary>
 public static class Ui
 {
-    /// <summary>The app speaks Spanish: dates in the user's Spanish culture, or Spain's.</summary>
-    public static readonly CultureInfo Culture =
-        CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "es" ? CultureInfo.CurrentCulture : new CultureInfo("es-ES");
+    /// <summary>Dates and numbers in the app's language (see Loc).</summary>
+    public static CultureInfo Culture => SackSpace.Core.Loc.Culture;
 
     public static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0], Culture) + s[1..];
 
     public static MenuItem Item(string header, string? glyph, Action? click, bool isChecked = false)
     {
-        var item = new MenuItem { Header = header, IsChecked = isChecked };
+        var item = new MenuItem { Header = SackSpace.Core.Loc.T(header), IsChecked = isChecked };
         if (glyph is not null) item.Icon = new TextBlock { Text = glyph };
         if (click is not null) item.Click += (_, _) => click();
         return item;
@@ -31,7 +31,7 @@ public static class Ui
 
     public static TextBlock Text(string text, string style = "Caption", double? size = null, bool wrap = false)
     {
-        var t = new TextBlock { Text = text, Style = Style(style) };
+        var t = new TextBlock { Text = SackSpace.Core.Loc.T(text), Style = Style(style) };
         if (size is { } s) t.FontSize = s;
         if (wrap) { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; }
         return t;
@@ -39,13 +39,14 @@ public static class Ui
 
     public static Button IconButton(string glyph, string tooltip, Action click, double size = 32)
     {
-        var b = new Button { Content = glyph, ToolTip = tooltip, Style = Style("IconButton"), Width = size, Height = size };
+        var b = new Button { Content = glyph, ToolTip = SackSpace.Core.Loc.T(tooltip), Style = Style("IconButton"), Width = size, Height = size };
         b.Click += (_, _) => click();
         return b;
     }
 
     public static Button Pill(string text, Action click, bool accent = false, string? glyph = null)
     {
+        text = SackSpace.Core.Loc.T(text);
         object content = text;
         if (glyph is not null)
         {
@@ -106,7 +107,7 @@ public static class Ui
         icon.Margin = new Thickness(0, 0, 10, 0);
         DockPanel.SetDock(icon, Dock.Left);
         dock.Children.Add(icon);
-        dock.Children.Add(new TextBlock { Text = title, Style = Style("Title"), VerticalAlignment = VerticalAlignment.Center });
+        dock.Children.Add(new TextBlock { Text = SackSpace.Core.Loc.T(title), Style = Style("Title"), VerticalAlignment = VerticalAlignment.Center });
         return dock;
     }
 
@@ -174,7 +175,7 @@ public static class Ui
         var grid = new Grid();
         var t = new TextBlock
         {
-            Text = hint,
+            Text = SackSpace.Core.Loc.T(hint),
             IsHitTestVisible = false,
             FontSize = box.FontSize,
             Padding = box.Padding,
@@ -188,5 +189,27 @@ public static class Ui
         grid.Children.Add(box);
         grid.Children.Add(t);
         return grid;
+    }
+
+    /// <summary>A flat full-width row that lights up under the mouse or keyboard focus.</summary>
+    public static Button Row(UIElement content, Action click)
+    {
+        var face = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(10, 6, 10, 6), Child = content, Background = Brushes.Transparent };
+        var button = new Button
+        {
+            Content = face, Template = GallerySheet.BareButton(), Cursor = System.Windows.Input.Cursors.Hand,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, FocusVisualStyle = null,
+        };
+        void Lit(bool on)
+        {
+            if (on) face.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
+            else face.Background = Brushes.Transparent;
+        }
+        button.MouseEnter += (_, _) => Lit(true);
+        button.MouseLeave += (_, _) => Lit(button.IsKeyboardFocused);
+        button.GotKeyboardFocus += (_, _) => Lit(true);
+        button.LostKeyboardFocus += (_, _) => Lit(button.IsMouseOver);
+        button.Click += (_, _) => click();
+        return button;
     }
 }

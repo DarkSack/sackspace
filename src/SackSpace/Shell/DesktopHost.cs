@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;

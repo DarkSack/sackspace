@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using SackSpace.Core.Model;
@@ -36,11 +37,11 @@ public sealed class TimerWidget : Grid, IDisposable
         _time.SetResourceReference(TextBlock.FontFamilyProperty, "DisplayFont");
         _caption = Ui.Text("");
         _caption.HorizontalAlignment = HorizontalAlignment.Center;
-        _play = Ui.IconButton(Glyphs.Play, "Empezar", Toggle, 40);
+        _play = Ui.IconButton(Glyphs.Play, Loc.T("Empezar"), Toggle, 40);
         _play.Style = Ui.Style("AccentIconButton");
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
         buttons.Children.Add(_play);
-        var reset = Ui.IconButton(Glyphs.Refresh, "Reiniciar", Reset, 40);
+        var reset = Ui.IconButton(Glyphs.Refresh, Loc.T("Reiniciar"), Reset, 40);
         reset.Margin = new Thickness(10, 0, 0, 0);
         buttons.Children.Add(reset);
 
@@ -89,12 +90,12 @@ public sealed class TimerWidget : Grid, IDisposable
         var running = TimerLogic.IsRunning(s);
         _time.Text = TimerLogic.Format(TimerLogic.Shown(s, DateTime.UtcNow));
         _play.Content = running ? Glyphs.Pause : Glyphs.Play;
-        _play.ToolTip = running ? "Pausar" : "Empezar";
+        _play.ToolTip = running ? Loc.T("Pausar") : Loc.T("Empezar");
         _caption.Text = TimerLogic.Mode(s) switch
         {
-            TimerLogic.Pomodoro => (TimerLogic.OnBreak(s) ? "Descanso" : "Concentración") + (TimerLogic.Rounds(s) > 0 ? $" · {TimerLogic.Rounds(s)} hechos" : ""),
-            TimerLogic.Stopwatch => "Cronómetro",
-            _ => running ? "Termina a las " + TimerLogic.EndsAt(s)!.Value.ToLocalTime().ToString("HH:mm", Ui.Culture) : "Temporizador",
+            TimerLogic.Pomodoro => (TimerLogic.OnBreak(s) ? Loc.T("Descanso") : Loc.T("Concentración")) + (TimerLogic.Rounds(s) > 0 ? Loc.T(" · {0} hechos", TimerLogic.Rounds(s)) : ""),
+            TimerLogic.Stopwatch => Loc.T("Cronómetro"),
+            _ => running ? Loc.T("Termina a las ") + TimerLogic.EndsAt(s)!.Value.ToLocalTime().ToString("HH:mm", Ui.Culture) : Loc.T("Temporizador"),
         };
         // Ticks every second only while running and on screen.
         if (running == _ticking) return;

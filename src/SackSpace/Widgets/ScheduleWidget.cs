@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -45,8 +46,8 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         if (ShiftSchedule.DropPast(c.Settings, DateTime.Today)) c.Save();
 
         _fold = Ui.IconButton(Glyphs.ChevronUp, "", ToggleFold, 28);
-        var header = Ui.Header(Glyphs.Work, "Horario",
-            Ui.IconButton(Glyphs.Add, "Añadir una actividad", () => c.Host.OpenSheet(new AddActivitySheet(c, Refresh)), 28), _fold);
+        var header = Ui.Header(Glyphs.Work, Loc.T("Horario"),
+            Ui.IconButton(Glyphs.Add, Loc.T("Añadir una actividad"), () => c.Host.OpenSheet(new AddActivitySheet(c, Refresh)), 28), _fold);
         SetDock(header, Dock.Top);
         Children.Add(header);
 
@@ -100,16 +101,16 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         var s = _c.Settings;
         var expanded = Expanded;
         _fold.Content = expanded ? Glyphs.ChevronUp : Glyphs.ChevronDown;
-        _fold.ToolTip = expanded ? "Retraer: solo hoy" : "Extender: toda la semana";
+        _fold.ToolTip = expanded ? Loc.T("Retraer: solo hoy") : Loc.T("Extender: toda la semana");
         _week.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
         // The timetable shows today's activities itself.
         _today.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
 
         if (ShiftSchedule.Week.All(d => string.IsNullOrWhiteSpace(s.GetString(d.Key, ""))))
         {
-            _phase.Text = "Sin horario";
+            _phase.Text = Loc.T("Sin horario");
             _range.Visibility = Visibility.Collapsed;
-            _detail.Text = "Escribe tu turno de cada día en las opciones del widget (clic derecho › Opciones), por ejemplo «09:00-18:00 comida 14:00-15:00» o «Descanso». Las actividades se añaden con el +.";
+            _detail.Text = Loc.T("Escribe tu turno de cada día en las opciones del widget (clic derecho › Opciones), por ejemplo «09:00-18:00 comida 14:00-15:00» o «Descanso». Las actividades se añaden con el +.");
         }
         else
         {
@@ -120,13 +121,13 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
             _range.Text = status.Shift is { } sh ? ShiftSchedule.Range(sh) : "";
             (_phase.Text, _detail.Text) = status.Phase switch
             {
-                ShiftPhase.Before => ("Hoy entras", $"Faltan {In(status.Next)}{BreakText(status.Shift)}"),
+                ShiftPhase.Before => (Loc.T("Hoy entras"), Loc.T("Faltan {0}", In(status.Next)) + BreakText(status.Shift)),
                 ShiftPhase.Working when status.Shift?.BreakStart is { } && status.Next?.TimeOfDay == status.Shift.BreakStart
-                    => ("En turno", $"Comida en {In(status.Next)} ({At(status.Next)})"),
-                ShiftPhase.Working => ("En turno", $"Sales en {In(status.Next)} ({At(status.Next)})"),
-                ShiftPhase.OnBreak => ("En la comida", $"Vuelves a las {At(status.Next)}, en {In(status.Next)}"),
-                ShiftPhase.Done => ("Turno terminado", NextShift(now)),
-                _ => ("Hoy descansas", NextShift(now)),
+                    => (Loc.T("En turno"), Loc.T("Comida en {0} ({1})", In(status.Next), At(status.Next))),
+                ShiftPhase.Working => (Loc.T("En turno"), Loc.T("Sales en {0} ({1})", In(status.Next), At(status.Next))),
+                ShiftPhase.OnBreak => (Loc.T("En la comida"), Loc.T("Vuelves a las {0}, en {1}", At(status.Next), In(status.Next))),
+                ShiftPhase.Done => (Loc.T("Turno terminado"), NextShift(now)),
+                _ => (Loc.T("Hoy descansas"), NextShift(now)),
             };
         }
 
@@ -140,7 +141,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
     }
 
     private static string BreakText(Shift? s) =>
-        s?.BreakStart is { } b && s.BreakEnd is { } e ? $" · comida {b:hh\\:mm}–{e:hh\\:mm}" : "";
+        s?.BreakStart is { } b && s.BreakEnd is { } e ? Loc.T(" · comida {0}–{1}", b.ToString(@"hh\:mm"), e.ToString(@"hh\:mm")) : "";
 
     /// <summary>"Mañana: 09:00 – 18:00" or the next working day.</summary>
     private string NextShift(DateTime now)
@@ -149,7 +150,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         {
             var day = now.Date.AddDays(i);
             if (ShiftSchedule.For(_c.Settings, day.DayOfWeek) is not { } s) continue;
-            var when = i == 1 ? "Mañana" : Ui.Capitalize(day.ToString("dddd", Ui.Culture));
+            var when = i == 1 ? Loc.T("Mañana") : Ui.Capitalize(day.ToString("dddd", Ui.Culture));
             return $"{when}: {ShiftSchedule.Range(s)}";
         }
         return "";
@@ -235,10 +236,10 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
             var head = new Border
             {
                 Background = Frozen(color), CornerRadius = new CornerRadius(7), Margin = new Thickness(2, 0, 2, 4), Padding = new Thickness(2, 3, 2, 3),
-                ToolTip = Ui.Capitalize(date.ToString("dddd d 'de' MMMM", Ui.Culture)),
+                ToolTip = Ui.Capitalize(date.ToString(Loc.T("dddd d 'de' MMMM"), Ui.Culture)),
                 Child = new TextBlock
                 {
-                    Text = $"{(isToday ? "Hoy" : ShiftSchedule.Week[i].Name[..3])} {date.Day}", Foreground = Ink, FontSize = 12,
+                    Text = $"{(isToday ? Loc.T("Hoy") : Loc.T(ShiftSchedule.Week[i].Name)[..3])} {date.Day}", Foreground = Ink, FontSize = 12,
                     FontWeight = isToday ? FontWeights.Bold : FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis,
                 },
             };
@@ -264,7 +265,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
                 {
                     Background = Frozen(color), BorderBrush = Ink, BorderThickness = new Thickness(0.5), CornerRadius = new CornerRadius(4),
                     Margin = new Thickness(1), Padding = new Thickness(3, 0, 3, 0),
-                    ToolTip = e.Label + (e.Weekly is not null ? " · cada semana" : "") + "\nArrástrala para moverla; estira su borde de abajo para cambiar cuánto dura; clic derecho para quitarla.",
+                    ToolTip = e.Label + (e.Weekly is not null ? Loc.T(" · cada semana") : "") + Loc.T("\nArrástrala para moverla; estira su borde de abajo para cambiar cuánto dura; clic derecho para quitarla."),
                     ContextMenu = RemoveMenu(e),
                 };
                 // What first, then when: in a narrow lane the name is what you need to read.
@@ -484,7 +485,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         var date = _monday.AddDays(day);
         if (e.Date is not null && date < DateTime.Today)
         {
-            _c.Toast("Ese día ya pasó.");
+            _c.Toast(Loc.T("Ese día ya pasó."));
             Refresh();
             return;
         }
@@ -514,7 +515,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
         var t = new TextBlock
         {
             Text = (e.Weekly is not null ? "↻ " : "• ") + e.Label, FontSize = size, TextTrimming = TextTrimming.CharacterEllipsis,
-            ToolTip = e.Weekly is not null ? "Cada semana. Clic derecho para quitarla." : "Clic derecho para quitarla.",
+            ToolTip = e.Weekly is not null ? Loc.T("Cada semana. Clic derecho para quitarla.") : Loc.T("Clic derecho para quitarla."),
             Background = System.Windows.Media.Brushes.Transparent,
         };
         t.SetResourceReference(TextBlock.ForegroundProperty, brush);
@@ -526,7 +527,7 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
     private ContextMenu RemoveMenu(ScheduleEvent e)
     {
         var menu = new ContextMenu();
-        menu.Items.Add(Ui.Item("Quitar «" + e.Text + "»", Glyphs.Delete, () =>
+        menu.Items.Add(Ui.Item(Loc.T("Quitar «") + e.Text + "»", Glyphs.Delete, () =>
         {
             ScheduleEvent.WriteAll(_c.Settings, ScheduleEvent.ReadAll(_c.Settings).Where(x => x.Id != e.Id));
             _c.Save();
@@ -541,14 +542,14 @@ public sealed class ScheduleWidget : DockPanel, IDisposable
 /// <summary>"Nueva actividad": text, optional time, the day (this week or every week).</summary>
 public sealed class AddActivitySheet : SheetBase
 {
-    public AddActivitySheet(WidgetContext c, Action added) : base(c.Host, Glyphs.Add, "Nueva actividad", 420)
+    public AddActivitySheet(WidgetContext c, Action added) : base(c.Host, Glyphs.Add, Loc.T("Nueva actividad"), 420)
     {
         var text = new TextBox { Style = Ui.Style("FieldTextBox"), MaxLength = 60, Margin = new Thickness(0, 0, 0, 12) };
         var time = Ui.TimeBox(null, 90);
         var end = Ui.TimeBox(null, 90);
-        Body.Children.Add(Label("Qué"));
-        Body.Children.Add(Ui.WithPlaceholder(text, "Junta, coaching, entregar reporte…"));
-        Body.Children.Add(Label("De · Hasta (déjalas en 00:00 si no tiene hora o no tiene fin)"));
+        Body.Children.Add(Label(Loc.T("Qué")));
+        Body.Children.Add(Ui.WithPlaceholder(text, Loc.T("Junta, coaching, entregar reporte…")));
+        Body.Children.Add(Label(Loc.T("De · Hasta (déjalas en 00:00 si no tiene hora o no tiene fin)")));
         var hours = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
         hours.Children.Add(time);
         hours.Children.Add(new TextBlock { Text = "–", FontSize = 14, Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -556,14 +557,14 @@ public sealed class AddActivitySheet : SheetBase
         Body.Children.Add(hours);
 
         // Days from today on, so "Mar" is the next Tuesday, not last week's.
-        Body.Children.Add(Label("Día"));
+        Body.Children.Add(Label(Loc.T("Día")));
         var today = DateTime.Today;
         var picked = today;
         var days = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         for (var i = 0; i < 7; i++)
         {
             var date = today.AddDays(i);
-            var name = i == 0 ? "Hoy" : i == 1 ? "Mañana" : Ui.Capitalize(date.ToString("ddd d", Ui.Culture).Replace(".", ""));
+            var name = i == 0 ? Loc.T("Hoy") : i == 1 ? Loc.T("Mañana") : Ui.Capitalize(date.ToString("ddd d", Ui.Culture).Replace(".", ""));
             var chip = Ui.Pill(name, () => { }, accent: i == 0);
             chip.Margin = new Thickness(0, 0, 6, 6);
             chip.Click += (_, _) =>
@@ -583,13 +584,13 @@ public sealed class AddActivitySheet : SheetBase
 
         void Add()
         {
-            if (text.Text.Trim().Length == 0) { error.Text = "Escribe qué es la actividad."; return; }
-            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(time.Text), out var from)) { error.Text = "Esa hora no existe: va de 00:00 a 23:59."; return; }
-            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(end.Text), out var to)) { error.Text = "Esa hora no existe: va de 00:00 a 23:59."; return; }
+            if (text.Text.Trim().Length == 0) { error.Text = Loc.T("Escribe qué es la actividad."); return; }
+            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(time.Text), out var from)) { error.Text = Loc.T("Esa hora no existe: va de 00:00 a 23:59."); return; }
+            if (!AutoSwitch.TryParseTime(AutoSwitch.NormalizeTime(end.Text), out var to)) { error.Text = Loc.T("Esa hora no existe: va de 00:00 a 23:59."); return; }
             // 00:00 in both = no time; 00:00 as the end = no end.
             TimeSpan? at = from == TimeSpan.Zero && to == TimeSpan.Zero ? null : from;
             TimeSpan? until = to == TimeSpan.Zero ? null : to;
-            if (until <= at) { error.Text = "Tiene que terminar después de empezar (el mismo día)."; return; }
+            if (until <= at) { error.Text = Loc.T("Tiene que terminar después de empezar (el mismo día)."); return; }
             var e = new ScheduleEvent(Guid.NewGuid().ToString("N")[..8], text.Text.Trim(), at,
                 weekly.IsChecked == true ? null : picked, weekly.IsChecked == true ? ShiftSchedule.Key(picked.DayOfWeek) : null, until);
             ScheduleEvent.WriteAll(c.Settings, [.. ScheduleEvent.ReadAll(c.Settings), e]);
@@ -600,7 +601,7 @@ public sealed class AddActivitySheet : SheetBase
         text.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
         time.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
         end.KeyDown += (_, k) => { if (k.Key == Key.Enter) Add(); };
-        var ok = Ui.Pill("Añadir", Add, accent: true, glyph: Glyphs.Add);
+        var ok = Ui.Pill(Loc.T("Añadir"), Add, accent: true, glyph: Glyphs.Add);
         ok.HorizontalAlignment = HorizontalAlignment.Right;
         Body.Children.Add(ok);
         Loaded += (_, _) => text.Focus();

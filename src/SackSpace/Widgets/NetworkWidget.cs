@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows.Controls;
 using SackSpace.Core.Widgets;
 using SackSpace.Services;
@@ -18,8 +19,8 @@ public sealed class NetworkWidget : Grid, IDisposable
     {
         _c = c;
         var sampler = c.Services.System;
-        _down = new Meter("Bajada", () => Scaled(sampler.DownHistory));
-        _up = new Meter("Subida", () => Scaled(sampler.UpHistory));
+        _down = new Meter(Loc.T("Bajada"), () => Scaled(sampler.DownHistory));
+        _up = new Meter(Loc.T("Subida"), () => Scaled(sampler.UpHistory));
         Meter.Stack(this, [_down, _up]);
         sampler.Sampled += Show;
         sampler.Subscribe(this, Meter.Interval(c), SampleKinds.Network);

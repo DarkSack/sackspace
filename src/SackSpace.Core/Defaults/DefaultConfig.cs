@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Text.Json.Nodes;
 using SackSpace.Core.Hotkeys;
 using SackSpace.Core.Model;
@@ -63,31 +64,31 @@ public static class DefaultConfig
 
         var personal = new Workspace
         {
-            Name = "Personal", Icon = Glyphs.Person, Accent = "#7C9CFF",
+            Name = Loc.T("Personal"), Icon = Glyphs.Person, Accent = "#7C9CFF",
             Panels =
             {
                 P(BuiltInWidgets.Clock, c0, Top),
                 P(BuiltInWidgets.Media, c0, y2),
                 P(BuiltInWidgets.Shortcuts, c0, y2 + 150 + LayoutMath.Gap, 360, 190,
-                    Shortcuts("Carpetas", new[] { "Documents", "Downloads", "Pictures", "Music", "Videos" }.Select(knownFolder))),
+                    Shortcuts(Loc.T("Carpetas"), new[] { "Documents", "Downloads", "Pictures", "Music", "Videos" }.Select(knownFolder))),
                 P(BuiltInWidgets.Calendar, c1, Top),
                 P(BuiltInWidgets.Notes, c1, Top + 300 + LayoutMath.Gap, 300, 250,
-                    Note("Bienvenido a SackSpace.\n\nMantén pulsado un panel, o toca el lápiz de la barra, para moverlo y cambiarle el tamaño.\n\nCtrl+Alt+W muestra los paneles encima de las ventanas.")),
+                    Note(Loc.T("Bienvenido a SackSpace.\n\nMantén pulsado un panel, o toca el lápiz de la barra, para moverlo y cambiarle el tamaño.\n\nCtrl+Alt+W muestra los paneles encima de las ventanas."))),
             },
         };
 
         var work = new Workspace
         {
-            Name = "Trabajo", Icon = Glyphs.Work, Accent = "#4FD1C5",
+            Name = Loc.T("Trabajo"), Icon = Glyphs.Work, Accent = "#4FD1C5",
             Panels =
             {
                 P(BuiltInWidgets.Clock, c0, Top),
                 P(BuiltInWidgets.Tasks, c0, y2, 360, 330,
-                    Tasks("Revisar el correo", "Preparar la reunión", "Enviar el informe")),
+                    Tasks(Loc.T("Revisar el correo"), Loc.T("Preparar la reunión"), Loc.T("Enviar el informe"))),
                 P(BuiltInWidgets.Calendar, c1, Top),
                 P(BuiltInWidgets.Notes, c1, Top + 300 + LayoutMath.Gap, 300, 250, Note("")),
                 P(BuiltInWidgets.Shortcuts, c2, Top, 300, 200,
-                    Shortcuts("Trabajo", [knownFolder("Documents"), knownFolder("Desktop"),
+                    Shortcuts(Loc.T("Trabajo"), [knownFolder("Documents"), knownFolder("Desktop"),
                         ..Apps("Outlook", "Word", "Excel", "PowerPoint", "Microsoft Teams", "Teams")])),
             },
         };
@@ -101,20 +102,20 @@ public static class DefaultConfig
                 P(BuiltInWidgets.SystemMonitor, c0, y2),
                 P(BuiltInWidgets.Media, c0, y2 + 220 + LayoutMath.Gap),
                 P(BuiltInWidgets.Shortcuts, c1, Top, 300, 260,
-                    Shortcuts("Juegos", Apps("Steam", "Epic Games Launcher", "Xbox", "Discord", "CurseForge", "Battle.net", "EA", "Ubisoft Connect", "GOG GALAXY"))),
+                    Shortcuts(Loc.T("Juegos"), Apps("Steam", "Epic Games Launcher", "Xbox", "Discord", "CurseForge", "Battle.net", "EA", "Ubisoft Connect", "GOG GALAXY"))),
             },
         };
 
         var dev = new Workspace
         {
-            Name = "Desarrollo", Icon = Glyphs.Code, Accent = "#B48CFF",
+            Name = Loc.T("Desarrollo"), Icon = Glyphs.Code, Accent = "#B48CFF",
             Panels =
             {
                 P(BuiltInWidgets.SystemMonitor, c0, Top),
-                P(BuiltInWidgets.Tasks, c0, Top + 220 + LayoutMath.Gap, 360, 330, Tasks("Revisar los pull requests")),
+                P(BuiltInWidgets.Tasks, c0, Top + 220 + LayoutMath.Gap, 360, 330, Tasks(Loc.T("Revisar los pull requests"))),
                 P(BuiltInWidgets.Notes, c1, Top, 300, 300, Note("")),
                 P(BuiltInWidgets.Shortcuts, c1, Top + 300 + LayoutMath.Gap, 300, 220,
-                    Shortcuts("Herramientas", [..Apps("Visual Studio Code", "Terminal", "Windows Terminal", "Visual Studio 2022",
+                    Shortcuts(Loc.T("Herramientas"), [..Apps("Visual Studio Code", "Terminal", "Windows Terminal", "Visual Studio 2022",
                         "Docker Desktop", "JetBrains Toolbox", "GitHub Desktop", "Git Bash", "Postman"), knownFolder("UserProfile")])),
             },
         };

@@ -972,3 +972,230 @@ public class UpdatesTests
         Assert.Null(Updates.ParseTag("nightly"));
     }
 }
+
+public class PlayTimeTests
+{
+    [Fact]
+    public void Adds_per_day_and_sums_periods()
+    {
+        var log = new JsonObject();
+        var thu = new DateTime(2026, 11, 5, 21, 0, 0);
+        PlayTime.Add(log, "steam:730", "CS2", thu, TimeSpan.FromMinutes(30));
+        PlayTime.Add(log, "steam:730", "CS2", thu, TimeSpan.FromMinutes(30));
+        PlayTime.Add(log, "epic:fortnite", "Fortnite", thu.AddDays(1), TimeSpan.FromHours(2));
+        PlayTime.Add(log, "epic:fortnite", "Fortnite", new DateTime(2026, 10, 30), TimeSpan.FromHours(1));
+        PlayTime.Add(log, "x", "nada", thu, TimeSpan.Zero);
+
+        var week = PlayTime.Totals(log, PlayTime.WeekStart(thu));
+        Assert.Equal(new DateTime(2026, 11, 2), PlayTime.WeekStart(thu)); // Monday
+        Assert.Equal(new DateTime(2026, 11, 2), PlayTime.WeekStart(new DateTime(2026, 11, 8))); // Sunday belongs to that week
+        Assert.Equal(["Fortnite", "CS2"], week.Select(t => t.Name));
+        Assert.Equal(TimeSpan.FromHours(2), week[0].Time);
+        Assert.Equal(TimeSpan.FromHours(3), PlayTime.Totals(log, null)[0].Time);
+        Assert.Equal("Fortnite", Assert.Single(PlayTime.Totals(log, thu.Date.AddDays(1))).Name); // from Friday on
+        Assert.Null(log["x"]);
+    }
+
+    [Fact]
+    public void Trim_keeps_the_total()
+    {
+        var log = new JsonObject();
+        var now = new DateTime(2026, 11, 6);
+        PlayTime.Add(log, "k", "Juego", now.AddDays(-PlayTime.KeepDays - 10), TimeSpan.FromHours(5));
+        PlayTime.Add(log, "k", "Juego", now, TimeSpan.FromHours(1));
+        PlayTime.Trim(log, now);
+        Assert.Single(log["k"]!["days"]!.AsObject());
+        Assert.Equal(TimeSpan.FromHours(6), PlayTime.Totals(log, null)[0].Time);
+        Assert.Equal(TimeSpan.FromHours(1), PlayTime.Totals(log, now.AddDays(-30))[0].Time);
+    }
+
+    [Fact]
+    public void Formats_hours_and_minutes()
+    {
+        Assert.Equal("menos de 1 min", PlayTime.Format(TimeSpan.FromSeconds(30)));
+        Assert.Equal("45 min", PlayTime.Format(TimeSpan.FromMinutes(45)));
+        Assert.Equal("2 h 05 min", PlayTime.Format(TimeSpan.FromMinutes(125)));
+    }
+}
+
+public class TwitchTests
+{
+    [Fact]
+    public void Combines_live_channel_and_new_followers()
+    {
+        var user = JsonNode.Parse("""{"id":"1","login":"sackitogamer","display_name":"SackitoGamer"}""")!;
+        var channel = JsonNode.Parse("""{"title":"viejo","game_name":"Just Chatting"}""")!;
+        var stream = JsonNode.Parse("""{"title":"Fortnite con subs","game_name":"Fortnite","viewer_count":42,"started_at":"2026-11-06T20:00:00Z"}""")!;
+        var followers = JsonNode.Parse("""{"total":1234,"data":[{"user_name":"Ana","followed_at":"2026-11-06T20:30:00Z"},{"user_name":"Beto","followed_at":"2026-11-06T10:00:00Z"}]}""")!;
+        var ch = Twitch.Combine(user, channel, stream, followers);
+        Assert.True(ch.Live);
+        Assert.Equal(("Fortnite con subs", "Fortnite", 42, 1234), (ch.Title, ch.Category, ch.Viewers, ch.Followers));
+        Assert.Equal(1, ch.NewFollowers(DateTimeOffset.Parse("2026-11-06T21:00:00Z"))); // only Ana came during the stream
+
+        var offline = Twitch.Combine(user, channel, null, followers);
+        Assert.False(offline.Live);
+        Assert.Equal("viejo", offline.Title);
+        Assert.Equal(2, offline.NewFollowers(DateTimeOffset.Parse("2026-11-06T21:00:00Z"))); // last 24 h
+    }
+
+    [Fact]
+    public void Picks_exact_category_else_first()
+    {
+        var search = JsonNode.Parse("""{"data":[{"id":"1","name":"Fortnite Festival"},{"id":"2","name":"Fortnite"}]}""");
+        Assert.Equal(("2", "Fortnite"), Twitch.PickCategory(search, " fortnite "));
+        Assert.Equal(("1", "Fortnite Festival"), Twitch.PickCategory(search, "fort"));
+        Assert.Null(Twitch.PickCategory(JsonNode.Parse("""{"data":[]}"""), "x"));
+    }
+
+    [Fact]
+    public void Parses_device_flow()
+    {
+        var now = DateTimeOffset.Parse("2026-11-06T00:00:00Z");
+        var code = Twitch.ParseDevice(JsonNode.Parse("""{"device_code":"d","user_code":"ABCD1234","verification_uri":"https://www.twitch.tv/activate?device-code=ABCD1234","expires_in":1800,"interval":5}""")!, now);
+        Assert.Equal(("ABCD1234", TimeSpan.FromSeconds(5), now.AddMinutes(30)), (code.UserCode, code.Interval, code.ExpiresAt));
+        Assert.True(Twitch.IsPending(JsonNode.Parse("""{"status":400,"message":"authorization_pending"}""")));
+        Assert.False(Twitch.IsPending(JsonNode.Parse("""{"status":400,"message":"invalid device code"}""")));
+    }
+}
+
+public class ClipHistoryTests
+{
+    [Fact]
+    public void Newest_first_without_repeats_and_capped()
+    {
+        var list = new List<ClipEntry>();
+        var t = DateTime.Now;
+        ClipHistory.Add(list, new("uno", false, t), 3);
+        ClipHistory.Add(list, new("dos", false, t), 3);
+        ClipHistory.Add(list, new("uno", false, t), 3); // moves up
+        ClipHistory.Add(list, new("uno", true, t), 3);  // a file named "uno" is another thing
+        ClipHistory.Add(list, new("   ", false, t), 3);
+        ClipHistory.Add(list, new(new string('x', ClipHistory.MaxTextLength + 1), false, t), 3);
+        Assert.Equal([("uno", true), ("uno", false), ("dos", false)], list.Select(e => (e.Text, e.Files)));
+        ClipHistory.Add(list, new("tres", false, t), 3);
+        Assert.Equal(3, list.Count);
+        Assert.Equal("a b…", new ClipEntry("a\n\n b   cdef", false, t).Preview(4));
+    }
+}
+
+public class FileSearchTests
+{
+    private static FileMatch? S(string file, string query, bool similar = true, string folder = @"c:\users\sack\documents")
+    {
+        var ext = Path.GetExtension(file).TrimStart('.').ToLowerInvariant();
+        return FileSearch.Score(FileSearch.Normalize(file), FileSearch.Normalize(folder), ext, FileSearch.Parse(query), similar);
+    }
+
+    [Fact]
+    public void Normalizes_accents_case_and_separators()
+    {
+        Assert.Equal("cancion final 2 mp3", FileSearch.Normalize("Canción_Final (2).MP3"));
+        Assert.Equal("informe v2", FileSearch.Normalize("--Informe--v2--"));
+    }
+
+    [Fact]
+    public void Exact_matches_rank_by_where_the_word_is()
+    {
+        var start = S("Factura enero.pdf", "factura")!.Value;
+        var word = S("Enero factura.pdf", "factura")!.Value;
+        var inside = S("Prefactura.pdf", "factura")!.Value;
+        Assert.False(start.Similar);
+        Assert.True(start.Score > word.Score && word.Score > inside.Score);
+        Assert.NotNull(S("Canción.mp3", "cancion"));
+        Assert.Null(S("Canción.mp3", "perro"));
+    }
+
+    [Fact]
+    public void Typos_and_missing_letters_match_as_similar()
+    {
+        Assert.True(S("Presupuesto 2026.xlsx", "presupusto")!.Value.Similar); // missing letter
+        Assert.True(S("Presupuesto 2026.xlsx", "prseupuesto")!.Value.Similar); // swapped letters
+        Assert.True(S("Facturas.pdf", "factur")!.Value.Score > 0);
+        Assert.Null(S("Presupuesto 2026.xlsx", "presupusto", similar: false)); // exact only
+        Assert.Null(S("Presupuesto.xlsx", "zzz"));
+    }
+
+    [Fact]
+    public void Filters_and_phrases()
+    {
+        Assert.NotNull(S("notas reunion.docx", "notas ext:docx"));
+        Assert.Null(S("notas reunion.docx", "notas *.pdf"));
+        Assert.NotNull(S("Mi informe final.docx", "\"informe final\""));
+        Assert.Null(S("Informe y final.docx", "\"informe final\""));
+        Assert.NotNull(S("a.txt", "en:documents"));
+        Assert.Null(S("a.txt", "en:dev"));
+        Assert.NotNull(S("leeme.txt", "sack")); // the word is in the folder path
+        var q = FileSearch.Parse("ext:PDF,.docx en:Mis_Cosas hola");
+        Assert.Equal(["pdf", "docx"], q.Extensions.Order().Reverse());
+        Assert.Equal(["mis cosas"], q.InFolders);
+        Assert.Equal(["hola"], q.Words);
+        Assert.Equal(1, FileSearch.Distance("ab", "ba"));
+    }
+}
+
+public class FileSearchFilterTests
+{
+    private static readonly DateTime Now = new(2026, 11, 6, 12, 0, 0);
+
+    [Fact]
+    public void Parses_kind_size_and_date()
+    {
+        var q = FileSearch.Parse("tipo:fotos tam:>10mb fecha:semana viaje", Now);
+        Assert.Contains("jpg", q.Extensions);
+        Assert.Equal(10L << 20, q.MinBytes);
+        Assert.Equal(Now.Date.AddDays(-7), q.From);
+        Assert.Equal(["viaje"], q.Words);
+        Assert.True(q.Passes(20L << 20, Now));
+        Assert.False(q.Passes(1L << 20, Now));
+        Assert.False(q.Passes(20L << 20, Now.AddDays(-30)));
+
+        var year = FileSearch.Parse("fecha:2025 size:<1.5gb", Now);
+        Assert.Equal((new DateTime(2025, 1, 1), new DateTime(2026, 1, 1)), (year.From!.Value, year.Until!.Value));
+        Assert.Equal((long)(1.5 * (1L << 30)), year.MaxBytes);
+        Assert.False(year.IsEmpty);
+        Assert.Equal(["fecha", "rara"], FileSearch.Parse("fecha:rara", Now).Words); // not a filter: plain words
+    }
+
+    [Fact]
+    public void Build_output_ranks_after_documents_and_far_letters_do_not_match()
+    {
+        static FileMatch? S(string file, string query) => FileSearch.Score(FileSearch.Normalize(file), @"c:\x",
+            Path.GetExtension(file).TrimStart('.').ToLowerInvariant(), FileSearch.Parse(query), true, FileSearch.Mask(FileSearch.Normalize(file)));
+        Assert.True(S("Informe.pdf", "informe")!.Value.Score > S("Informe.class", "informe")!.Value.Score);
+        Assert.Null(S("Cancellation.java", "cancion"));
+        Assert.Null(S("plasma_cannon.png", "cancion"));
+        Assert.NotNull(S("Presupuesto.xlsx", "prsupusto"));
+    }
+}
+
+public class LocTests
+{
+    [Theory]
+    [InlineData("en")]
+    [InlineData("pt")]
+    public void TablesLoadAndKeepPlaceholders(string code)
+    {
+        var table = Loc.Read(code);
+        Assert.NotNull(table);
+        Assert.NotEmpty(table);
+        foreach (var (spanish, text) in table)
+        {
+            // A translation with other placeholders would throw (or lose a value) in string.Format.
+            var args = Enumerable.Range(0, 4).Select(i => (object)i).ToArray();
+            Assert.False(string.IsNullOrWhiteSpace(text), spanish);
+            var expected = System.Text.RegularExpressions.Regex.Matches(spanish, @"\{\d").Select(m => m.Value).Order();
+            var actual = System.Text.RegularExpressions.Regex.Matches(text, @"\{\d").Select(m => m.Value).Order();
+            Assert.Equal(expected, actual);
+            _ = string.Format(System.Globalization.CultureInfo.InvariantCulture, text, args);
+        }
+    }
+
+    [Fact]
+    public void ResolvePicksWindowsLanguageOrEnglish()
+    {
+        Assert.Equal("pt", Loc.Resolve("auto", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")));
+        Assert.Equal("es", Loc.Resolve("auto", System.Globalization.CultureInfo.GetCultureInfo("es-MX")));
+        Assert.Equal("en", Loc.Resolve("auto", System.Globalization.CultureInfo.GetCultureInfo("de-DE")));
+        Assert.Equal("en", Loc.Resolve("en", System.Globalization.CultureInfo.GetCultureInfo("es-ES")));
+    }
+}

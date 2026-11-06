@@ -7,4 +7,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="SackSpace.Tests" />
   </ItemGroup>
+  <!-- Translations: Lang/<code>.json maps each Spanish text to that language. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Lang\*.json" LogicalName="Lang.%(Filename).json" />
+  </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,7 +25,7 @@ public sealed class TasksWidget : DockPanel
         _items = TaskItem.ReadAll(c.Settings);
         _hideDone = c.Settings.GetBool("hideDone", false);
 
-        _clearDone = Ui.IconButton(Glyphs.Delete, "Borrar las completadas", () => { _items.RemoveAll(i => i.Done); Save(); }, 28);
+        _clearDone = Ui.IconButton(Glyphs.Delete, Loc.T("Borrar las completadas"), () => { _items.RemoveAll(i => i.Done); Save(); }, 28);
         _clearDone.Margin = new Thickness(6, 0, 0, 0);
         var header = Ui.Header(Glyphs.Tasks, c.Settings.GetString("title", "Tareas"), _count, _clearDone);
         SetDock(header, Dock.Top);
@@ -43,7 +44,7 @@ public sealed class TasksWidget : DockPanel
         var inputRow = new DockPanel();
         DockPanel.SetDock(plus, Dock.Left);
         inputRow.Children.Add(plus);
-        inputRow.Children.Add(Ui.WithPlaceholder(_input, "Nueva tarea"));
+        inputRow.Children.Add(Ui.WithPlaceholder(_input, Loc.T("Nueva tarea")));
         var inputBox = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 8, 0, 0), Child = inputRow };
         inputBox.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
         SetDock(inputBox, Dock.Bottom);
@@ -72,7 +73,7 @@ public sealed class TasksWidget : DockPanel
             var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3), Background = System.Windows.Media.Brushes.Transparent };
             var check = new CheckBox { Style = Ui.Style("RoundCheck"), IsChecked = item.Done, Margin = new Thickness(0, 1, 12, 0), VerticalAlignment = VerticalAlignment.Top };
             check.Click += (_, _) => { _items[index] = item with { Done = !item.Done }; Save(); };
-            var delete = Ui.IconButton(Glyphs.Close, "Borrar", () => { _items.RemoveAt(index); Save(); }, 24);
+            var delete = Ui.IconButton(Glyphs.Close, Loc.T("Borrar"), () => { _items.RemoveAt(index); Save(); }, 24);
             delete.FontSize = 10;
             delete.Opacity = 0;
             delete.VerticalAlignment = VerticalAlignment.Top;
@@ -89,8 +90,8 @@ public sealed class TasksWidget : DockPanel
             _list.Children.Add(row);
         }
         var pending = _items.Count(i => !i.Done);
-        _count.Text = _items.Count == 0 ? "" : pending == 0 ? "Todo hecho" : pending == 1 ? "1 pendiente" : $"{pending} pendientes";
+        _count.Text = _items.Count == 0 ? "" : pending == 0 ? Loc.T("Todo hecho") : pending == 1 ? Loc.T("1 pendiente") : Loc.T("{0} pendientes", pending);
         _clearDone.Visibility = _items.Any(i => i.Done) ? Visibility.Visible : Visibility.Collapsed;
-        if (_items.Count == 0) _list.Children.Add(Ui.Text("Sin tareas. Escribe una abajo y pulsa Intro.", wrap: true));
+        if (_items.Count == 0) _list.Children.Add(Ui.Text(Loc.T("Sin tareas. Escribe una abajo y pulsa Intro."), wrap: true));
     }
 }

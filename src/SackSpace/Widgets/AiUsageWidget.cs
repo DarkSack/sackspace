@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -105,7 +106,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
     public AiUsageWidget(WidgetContext c)
     {
         _c = c;
-        var header = Ui.Header(Glyphs.Gauge, "Uso de IA");
+        var header = Ui.Header(Glyphs.Gauge, Loc.T("Uso de IA"));
         SetDock(header, Dock.Top);
         Children.Add(header);
         Children.Add(new ScrollViewer { Content = _list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -119,7 +120,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
 
         if (_accounts.Count == 0)
         {
-            _list.Children.Add(Ui.Text("Añade tus cuentas en las opciones del widget (el engranaje en modo edición, o clic derecho › Opciones).", wrap: true));
+            _list.Children.Add(Ui.Text(Loc.T("Añade tus cuentas en las opciones del widget (el engranaje en modo edición, o clic derecho › Opciones)."), wrap: true));
             return;
         }
         c.Services.Clock.Minute += OnMinute;
@@ -146,7 +147,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
                 {
                     if (ex is not UsageUnavailable) Log.Warn($"Uso de IA de '{title}'", ex);
                     // Keep the last numbers on screen, with the reason they are not new.
-                    rows.Add(Row(title, _last.GetValueOrDefault(title), ex is UsageUnavailable ? ex.Message : "Sin conexión. Lo intento de nuevo en un rato."));
+                    rows.Add(Row(title, _last.GetValueOrDefault(title), ex is UsageUnavailable ? ex.Message : Loc.T("Sin conexión. Lo intento de nuevo en un rato.")));
                 }
             }
             _list.Children.Clear();
@@ -168,7 +169,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
         {
             var now = DateTimeOffset.Now;
             box.Children.Add(Limit("5 horas", r.FiveHours?.At(now), now));
-            box.Children.Add(Limit("Semana", r.Week?.At(now), now));
+            box.Children.Add(Limit(Loc.T("Semana"), r.Week?.At(now), now));
         }
         if (problem is not null)
         {
@@ -194,7 +195,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
     {
         var row = new StackPanel { Margin = new Thickness(0, 6, 0, 0) };
         var top = new DockPanel();
-        var right = Ui.Text(w is null ? "sin dato" : w.ResetsAt is { } at ? $"{w.Percent:0} % · reinicia {When(at, now)}" : $"{w.Percent:0} %");
+        var right = Ui.Text(w is null ? Loc.T("sin dato") : w.ResetsAt is { } at ? Loc.T("{0:0} % · reinicia {1}", w.Percent, When(at, now)) : $"{w.Percent:0} %");
         SetDock(right, Dock.Right);
         top.Children.Add(right);
         top.Children.Add(Ui.Text(label));
@@ -208,7 +209,7 @@ public sealed class AiUsageWidget : DockPanel, IDisposable
         var local = at.ToLocalTime().DateTime;
         var today = now.LocalDateTime.Date;
         return local.Date == today ? local.ToString("HH:mm", Ui.Culture)
-            : local.Date == today.AddDays(1) ? "mañana " + local.ToString("HH:mm", Ui.Culture)
+            : local.Date == today.AddDays(1) ? Loc.T("mañana ") + local.ToString("HH:mm", Ui.Culture)
             : local.ToString("ddd HH:mm", Ui.Culture).Replace(".", "");
     }
 

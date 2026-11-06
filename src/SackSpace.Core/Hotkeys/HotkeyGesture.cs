@@ -118,13 +118,13 @@ public static class HotkeyActions
 
     public static string Label(string action) => action switch
     {
-        Peek => "Mostrar u ocultar los paneles sobre las ventanas",
-        Edit => "Editar el diseño",
-        Next => "Siguiente espacio",
-        Previous => "Espacio anterior",
-        Settings => "Abrir los ajustes",
-        Search => "Buscar y abrir una app, un juego o un acceso",
-        _ when action.StartsWith("workspace", StringComparison.Ordinal) => $"Ir al espacio {action["workspace".Length..]}",
+        Peek => Loc.T("Mostrar u ocultar los paneles sobre las ventanas"),
+        Edit => Loc.T("Editar el diseño"),
+        Next => Loc.T("Siguiente espacio"),
+        Previous => Loc.T("Espacio anterior"),
+        Settings => Loc.T("Abrir los ajustes"),
+        Search => Loc.T("Buscar y abrir una app, un juego, un acceso o un archivo"),
+        _ when action.StartsWith("workspace", StringComparison.Ordinal) => Loc.T("Ir al espacio {0}", action["workspace".Length..]),
         _ => action,
     };
 }

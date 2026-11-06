@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -190,7 +191,7 @@ public sealed class MediaService
             "opera" => "Opera",
             "spotify" => "Spotify",
             "app" => "Apple Music",
-            "microsoft.zunemusic" or "music.ui" or "microsoft.media.player" => "Reproductor multimedia",
+            "microsoft.zunemusic" or "music.ui" or "microsoft.media.player" => Loc.T("Reproductor multimedia"),
             _ => name.Length > 0 ? char.ToUpperInvariant(name[0]) + name[1..] : aumid,
         };
     }

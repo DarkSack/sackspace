@@ -35,6 +35,8 @@ public sealed class HostManager
 
     /// <summary>Raised, edit mode or the active workspace changed.</summary>
     public event Action? StateChanged;
+    /// <summary>Another workspace came up (by hand, shortcut or automatically).</summary>
+    public event Action<Workspace>? WorkspaceSwitched;
 
     private AppConfig Config => _services.Session.Config;
 
@@ -223,6 +225,7 @@ public sealed class HostManager
         PrimaryView?.Bar?.Update();
         if (!Config.General.ShowWorkspaceBar) PrimaryView?.ShowSnackbar(list[to].Name);
         StateChanged?.Invoke();
+        WorkspaceSwitched?.Invoke(list[to]);
     }
 
     public void SwitchToNumber(int number)

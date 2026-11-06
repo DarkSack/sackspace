@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Windows;
 using System.Windows.Controls;
 using SackSpace.Core.Model;
@@ -31,6 +32,6 @@ public sealed class NotesWidget : DockPanel
             c.Settings["text"] = box.Text;
             c.Save();
         };
-        Children.Add(Ui.WithPlaceholder(box, "Escribe aquí…"));
+        Children.Add(Ui.WithPlaceholder(box, Loc.T("Escribe aquí…")));
     }
 }

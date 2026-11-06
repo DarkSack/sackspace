@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -34,7 +35,7 @@ public sealed class ShortcutsWidget : DockPanel
         _labels = c.Settings.GetBool("labels", true);
         _autoRemove = c.Settings.GetBool("autoRemove", true);
 
-        var add = Ui.IconButton(Glyphs.Add, "Añadir", () => { }, 28);
+        var add = Ui.IconButton(Glyphs.Add, Loc.T("Añadir"), () => { }, 28);
         add.Click += (_, _) => AddMenu(add).IsOpen = true;
         var header = Ui.Header(Glyphs.Apps, c.Settings.GetString("title", "Accesos"), add);
         SetDock(header, Dock.Top);
@@ -88,7 +89,7 @@ public sealed class ShortcutsWidget : DockPanel
         if (add.Count > 0) Save();
         else if (seen is null || seen.Count != all.Count) _c.Save();
         if (add.Count > 0)
-            _c.Toast($"Añadidos a {Title}: " + string.Join(", ", add.Take(4).Select(g => g.Name)) + (add.Count > 4 ? $" y {add.Count - 4} más" : ""));
+            _c.Toast(Loc.T("Añadidos a {0}: ", Title) + string.Join(", ", add.Take(4).Select(g => g.Name)) + (add.Count > 4 ? Loc.T(" y {0} más", add.Count - 4) : ""));
     }
 
     private void RemoveGone(IReadOnlyList<ShortcutItem> gone)
@@ -96,29 +97,29 @@ public sealed class ShortcutsWidget : DockPanel
         foreach (var i in gone) _items.Remove(i);
         _gone.Clear();
         Save();
-        var names = string.Join(", ", gone.Take(4).Select(i => i.Name)) + (gone.Count > 4 ? $" y {gone.Count - 4} más" : "");
-        _c.Toast($"Quitados de {Title} porque ya no están: {names}");
+        var names = string.Join(", ", gone.Take(4).Select(i => i.Name)) + (gone.Count > 4 ? Loc.T(" y {0} más", gone.Count - 4) : "");
+        _c.Toast(Loc.T("Quitados de {0} porque ya no están: {1}", Title, names));
     }
 
     private ContextMenu AddMenu(UIElement target)
     {
         var menu = new ContextMenu { PlacementTarget = target, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-        menu.Items.Add(Ui.Item("Una app…", Glyphs.Apps, () => _c.Host.OpenSheet(new AppPickerSheet(_c.Host, _c.Services, app => Add(app.Name, app.ParsingName)))));
-        menu.Items.Add(Ui.Item("Archivos…", Glyphs.Document, () =>
+        menu.Items.Add(Ui.Item(Loc.T("Una app…"), Glyphs.Apps, () => _c.Host.OpenSheet(new AppPickerSheet(_c.Host, _c.Services, app => Add(app.Name, app.ParsingName)))));
+        menu.Items.Add(Ui.Item(Loc.T("Archivos…"), Glyphs.Document, () =>
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = "Elige archivos para " + Title };
+            var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = Loc.T("Elige archivos para ") + Title };
             if (dialog.ShowDialog(Window.GetWindow(this)) == true) Add(dialog.FileNames);
         }));
-        menu.Items.Add(Ui.Item("Una carpeta…", Glyphs.Folder, () =>
+        menu.Items.Add(Ui.Item(Loc.T("Una carpeta…"), Glyphs.Folder, () =>
         {
-            var dialog = new Microsoft.Win32.OpenFolderDialog { Multiselect = true, Title = "Elige carpetas para " + Title };
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Multiselect = true, Title = Loc.T("Elige carpetas para ") + Title };
             if (dialog.ShowDialog(Window.GetWindow(this)) == true) Add(dialog.FolderNames);
         }));
         var keys = GameKeys();
         var missing = _games.Where(g => !keys.Contains(g.Key)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         if (missing.Count > 0)
         {
-            var games = Ui.Item("Un juego instalado", Glyphs.Game, null);
+            var games = Ui.Item(Loc.T("Un juego instalado"), Glyphs.Game, null);
             foreach (var g in missing)
             {
                 var item = Ui.Item(g.Bytes > 0 ? $"{g.Name}  ({StorageWidget.Size(g.Bytes)})" : g.Name, null, () => Add(g.Name, g.LaunchPath));
@@ -130,7 +131,7 @@ public sealed class ShortcutsWidget : DockPanel
         if (gone.Count > 0)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Ui.Item($"Quitar los que ya no están ({gone.Count})", Glyphs.Delete, () => RemoveGone(gone)));
+            menu.Items.Add(Ui.Item(Loc.T("Quitar los que ya no están ({0})", gone.Count), Glyphs.Delete, () => RemoveGone(gone)));
         }
         return menu;
     }
@@ -162,7 +163,7 @@ public sealed class ShortcutsWidget : DockPanel
         foreach (var item in _items) _tiles.Children.Add(Tile(item));
         if (_items.Count == 0)
         {
-            var hint = Ui.Text("Arrastra aquí apps, archivos o carpetas, o pulsa +.", wrap: true);
+            var hint = Ui.Text(Loc.T("Arrastra aquí apps, archivos o carpetas, o pulsa +."), wrap: true);
             hint.Margin = new Thickness(6, 0, 6, 0);
             _tiles.Children.Add(hint);
         }
@@ -194,25 +195,25 @@ public sealed class ShortcutsWidget : DockPanel
             Content = face,
             Template = GallerySheet.BareButton(),
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = exists ? item.Name : $"Ya no está instalado o no se encuentra: {item.Path}",
+            ToolTip = exists ? item.Name : Loc.T("Ya no está instalado o no se encuentra: {0}", item.Path),
             Opacity = exists ? 1 : 0.45,
         };
         tile.MouseEnter += (_, _) => face.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
         tile.MouseLeave += (_, _) => face.Background = Brushes.Transparent;
         tile.Click += (_, _) =>
         {
-            if (!InstalledApps.Launch(item.Path, out var error)) _c.Toast($"No se pudo abrir «{item.Name}»: {error}");
+            if (!InstalledApps.Launch(item.Path, out var error)) _c.Toast(Loc.T("No se pudo abrir «{0}»: {1}", item.Name, error));
         };
 
         var menu = new ContextMenu();
-        menu.Items.Add(Ui.Item("Abrir", Glyphs.View, () => InstalledApps.Launch(item.Path, out _)));
+        menu.Items.Add(Ui.Item(Loc.T("Abrir"), Glyphs.View, () => InstalledApps.Launch(item.Path, out _)));
         if (!item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
-            menu.Items.Add(Ui.Item("Abrir su ubicación", Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
+            menu.Items.Add(Ui.Item(Loc.T("Abrir su ubicación"), Glyphs.Folder, () => InstalledApps.ShowInFolder(item.Path)));
         var index = _items.IndexOf(item);
-        if (index > 0) menu.Items.Add(Ui.Item("Mover antes", Glyphs.ChevronLeft, () => Move(index, -1)));
-        if (index < _items.Count - 1) menu.Items.Add(Ui.Item("Mover después", Glyphs.ChevronRight, () => Move(index, +1)));
+        if (index > 0) menu.Items.Add(Ui.Item(Loc.T("Mover antes"), Glyphs.ChevronLeft, () => Move(index, -1)));
+        if (index < _items.Count - 1) menu.Items.Add(Ui.Item(Loc.T("Mover después"), Glyphs.ChevronRight, () => Move(index, +1)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Ui.Item("Quitar del grupo", Glyphs.Delete, () => { _items.Remove(item); Save(); }));
+        menu.Items.Add(Ui.Item(Loc.T("Quitar del grupo"), Glyphs.Delete, () => { _items.Remove(item); Save(); }));
         tile.ContextMenu = menu;
         return tile;
     }
@@ -261,7 +262,7 @@ public sealed class AppPickerSheet : SheetBase
     private readonly System.Windows.Threading.DispatcherTimer _typing = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private int _fill; // the latest list; icons of an older one are dropped
 
-    public AppPickerSheet(HostView host, AppServices services, Action<InstalledApp> picked) : base(host, Glyphs.Apps, "Elige una app", 440)
+    public AppPickerSheet(HostView host, AppServices services, Action<InstalledApp> picked) : base(host, Glyphs.Apps, Loc.T("Elige una app"), 440)
     {
         _picked = picked;
         Height = Math.Min(560, host.AreaSize.Height * 0.8);
@@ -269,11 +270,11 @@ public sealed class AppPickerSheet : SheetBase
         _typing.Tick += (_, _) => { _typing.Stop(); Fill(); };
         _search.TextChanged += (_, _) => { _typing.Stop(); _typing.Start(); };
         Unloaded += (_, _) => _typing.Stop();
-        var search = Ui.WithPlaceholder(_search, "Buscar");
+        var search = Ui.WithPlaceholder(_search, Loc.T("Buscar"));
         search.Margin = new Thickness(0, 0, 0, 12);
         Body.Children.Add(search);
         Body.Children.Add(_list);
-        _list.Children.Add(Ui.Text("Leyendo el menú Inicio…"));
+        _list.Children.Add(Ui.Text(Loc.T("Leyendo el menú Inicio…")));
         Loaded += (_, _) => _search.Focus();
         Load(services);
     }
@@ -292,7 +293,7 @@ public sealed class AppPickerSheet : SheetBase
         var icons = new List<(Image Image, Task<ImageSource?> Icon)>();
         var q = _search.Text.Trim();
         var found = _apps.Where(a => q.Length == 0 || a.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)).Take(60).ToList();
-        if (found.Count == 0) _list.Children.Add(Ui.Text(_apps.Count == 0 ? "No se encontraron apps." : "Nada coincide con la búsqueda."));
+        if (found.Count == 0) _list.Children.Add(Ui.Text(_apps.Count == 0 ? Loc.T("No se encontraron apps.") : Loc.T("Nada coincide con la búsqueda.")));
         foreach (var app in found)
         {
             var image = new Image { Width = 24, Height = 24, Margin = new Thickness(0, 0, 12, 0) };

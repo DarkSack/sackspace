@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sample SackSpace plugin: copy bin\...\DaysUntil.dll into <data>\plugins\DaysUntil\ and turn it on in Settings. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SackSpace is already loaded when the plugin runs: reference it, never ship a copy. -->
+    <ProjectReference Include="..\..\src\SackSpace\SackSpace.csproj" Private="false" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\..\src\SackSpace.Core\SackSpace.Core.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+</Project>

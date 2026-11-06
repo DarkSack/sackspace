@@ -2,6 +2,8 @@ using SackSpace.Interop;
 using SackSpace.Shell;
 using SackSpace.Theming;
 
+using SackSpace.Core.Widgets;
+
 namespace SackSpace.Services;
 
 /// <summary>The app's shared services, built once at startup.</summary>
@@ -25,8 +27,23 @@ public sealed class AppServices
     /// <summary>Null in --snapshot and --bench runs.</summary>
     public UpdateService? Updates { get; set; }
     public HotkeyService? Hotkeys { get; set; }
+    /// <summary>Counts play time. Null in --snapshot runs.</summary>
+    public PlayTracker? Play { get; set; }
+    /// <summary>The user's files for the search; null when turned off or in --snapshot runs.</summary>
+    public FileIndex? Files { get; set; }
+    /// <summary>Plugin folders found at startup (see PluginLoader).</summary>
+    public IReadOnlyList<SackSpace.Widgets.PluginInfo> Plugins { get; set; } = [];
     /// <summary>Actions whose shortcut could not be registered (taken by another app).</summary>
     public IReadOnlyList<string> FailedHotkeys { get; set; } = [];
+
+    private TwitchApi? _twitch;
+    private ClipboardWatcher? _clipboard;
+
+    /// <summary>Clipboard history; starts listening the first time a panel asks.</summary>
+    public ClipboardWatcher Clipboard => _clipboard ??= new ClipboardWatcher();
+
+    /// <summary>The signed-in Twitch account (shared by every Twitch panel).</summary>
+    public TwitchApi Twitch => _twitch ??= new TwitchApi(DataFolder);
 
     private Task<IReadOnlyList<InstalledApp>>? _apps;
 

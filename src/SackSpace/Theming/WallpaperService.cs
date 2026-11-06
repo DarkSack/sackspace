@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -116,7 +117,7 @@ public sealed class WallpaperService
         catch (Exception ex)
         {
             Log.Warn("No se pudo dibujar el fondo de pantalla", ex);
-            image = Render(new WallpaperSource(null, WallpaperPosition.Fill, 0x1E1A16), "Color liso", monitor.Bounds, 0, monitor.Scale);
+            image = Render(new WallpaperSource(null, WallpaperPosition.Fill, 0x1E1A16), Loc.T("Color liso"), monitor.Bounds, 0, monitor.Scale);
         }
         _cache[monitor.Key] = image;
         return image;
@@ -126,12 +127,12 @@ public sealed class WallpaperService
     private (WallpaperSource Source, string Label) Pick(MonitorInfo monitor)
     {
         static WallpaperSource Still(string path) => new(path, WallpaperPosition.Fill, 0);
-        if (_customImage is not null && File.Exists(_customImage)) return (Still(_customImage), "Imagen propia");
+        if (_customImage is not null && File.Exists(_customImage)) return (Still(_customImage), Loc.T("Imagen propia"));
         if (_live.Engine is { } config && LiveWallpapers.WallpaperEngine(config, monitor.Key, monitor.IsPrimary) is { } engine)
             return (Still(engine.Picture), "Wallpaper Engine · " + engine.Title);
         if (_live.Lively is { } folder && LiveWallpapers.Lively(folder, monitor.Key) is { } lively)
             return (Still(lively.Picture), "Lively · " + lively.Title);
-        return (DesktopWallpaper.For(monitor.Bounds), "Fondo de Windows");
+        return (DesktopWallpaper.For(monitor.Bounds), Loc.T("Fondo de Windows"));
     }
 
     private static (string? Engine, string? Lively, string Stamp) FindLive()

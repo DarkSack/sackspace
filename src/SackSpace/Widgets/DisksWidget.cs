@@ -1,3 +1,4 @@
+using Loc = SackSpace.Core.Loc;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +19,7 @@ public sealed class DisksWidget : DockPanel, IDisposable
     {
         _c = c;
         _removable = c.Settings.GetBool("removable", true);
-        var header = Ui.Header(Glyphs.Drive, "Discos");
+        var header = Ui.Header(Glyphs.Drive, Loc.T("Discos"));
         SetDock(header, Dock.Top);
         Children.Add(header);
         Children.Add(new ScrollViewer { Content = _list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -39,7 +40,7 @@ public sealed class DisksWidget : DockPanel, IDisposable
             catch (IOException) { } // a card reader without a card, a drive being ejected
             catch (UnauthorizedAccessException) { }
         }
-        if (_list.Children.Count == 0) _list.Children.Add(Ui.Text("No hay unidades que mostrar.", wrap: true));
+        if (_list.Children.Count == 0) _list.Children.Add(Ui.Text(Loc.T("No hay unidades que mostrar."), wrap: true));
     }
 
     private static FrameworkElement Row(DriveInfo d)
@@ -50,7 +51,7 @@ public sealed class DisksWidget : DockPanel, IDisposable
         var name = string.IsNullOrWhiteSpace(d.VolumeLabel) ? letter : $"{letter}  {d.VolumeLabel}";
 
         var top = new DockPanel();
-        var free = Ui.Text(string.Format(Ui.Culture, "{0:0} GB libres de {1:0}", d.TotalFreeSpace / gb, d.TotalSize / gb));
+        var free = Ui.Text(string.Format(Ui.Culture, Loc.T("{0:0} GB libres de {1:0}"), d.TotalFreeSpace / gb, d.TotalSize / gb));
         SetDock(free, Dock.Right);
         top.Children.Add(free);
         top.Children.Add(new TextBlock { Text = name, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis });

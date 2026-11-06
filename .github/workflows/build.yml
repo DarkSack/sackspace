@@ -21,7 +21,7 @@ jobs:
       SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && github.event_name != 'pull_request' }}
       SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
       SIGNPATH_PROJECT: sackspace
-      SIGNPATH_POLICY: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
+      SIGNPATH_POLICY: test-signing # shortcut: switch v* tags to release-signing once SignPath Foundation approves
     steps:
       - uses: actions/checkout@v4
 

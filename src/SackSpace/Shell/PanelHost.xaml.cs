@@ -70,12 +70,12 @@ public partial class PanelHost : UserControl
         try
         {
             _widget = factory?.Create(new WidgetContext(Panel, _host.Services, _host))
-                ?? Ui.Text("Este widget no está disponible en esta versión.", wrap: true);
+                ?? Ui.Text(Loc.T("Este widget no está disponible en esta versión."), wrap: true);
         }
         catch (Exception ex)
         {
             Log.Error($"El widget '{Panel.Widget}' falló al crearse", ex);
-            _widget = Ui.Text("Este widget no se pudo cargar.", wrap: true);
+            _widget = Ui.Text(Loc.T("Este widget no se pudo cargar."), wrap: true);
         }
         Body.Content = _widget;
         var headers = (_widget as Panel)?.Children.OfType<FrameworkElement>().Where(e => Equals(e.Tag, Ui.HeaderTag)).ToList() ?? [];
