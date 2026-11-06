@@ -50,6 +50,7 @@ public static class Glyphs
     public const string Undo = "";
     public const string Drive = "\uEDA2";
     public const string Storage = "\uEB05";
+    public const string Warning = "\uE7BA";
     public const string Network = "\uE701";
     public const string Weather = "\uE706";
     public const string Timer = "\uE916";

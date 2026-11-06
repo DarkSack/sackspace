@@ -89,9 +89,10 @@ public static class BuiltInWidgets
         [
             new("removable", "Incluir memorias USB", WidgetSettingKind.Toggle, "true"),
         ]),
-        new(Storage, "Almacenamiento", "En qué se te va el espacio de cada disco: juegos, sistema, programas, fotos, archivos… Se mide en tu PC una vez al día o al pulsar actualizar.", Glyphs.Storage, 380, 330, 260, 180,
+        new(Storage, "Almacenamiento", "En qué se te va el espacio de cada disco: juegos, sistema, programas, datos de apps, fotos, archivos, desarrollo… Toca una categoría para ver sus carpetas más grandes. Se mide en tu PC, sin internet.", Glyphs.Storage, 400, 460, 260, 180,
         [
             new("extra", @"Carpetas propias: Categoría=carpeta, separadas por ; (p. ej. Juegos=D:\JUEGOS; Desarrollo=E:\Dev)", WidgetSettingKind.Text, ""),
+            new("interval", "Medir de nuevo cada", WidgetSettingKind.Choice, "1 día", ["6 h", "12 h", "1 día", "1 semana", "Solo a mano"]),
         ]),
         new(Network, "Red", "Velocidad de bajada y subida en tiempo real.", Glyphs.Network, 360, 160, 220, 120,
         [

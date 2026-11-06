@@ -806,11 +806,42 @@ public class StorageUsageTests
     }
 
     [Fact]
-    public void Summary_adds_up_categories_and_leaves_the_rest_unclassified()
+    public void Summary_adds_up_categories_and_leaves_the_rest_hidden()
     {
-        var parts = StorageUsage.Summarize(1000, [(StorageUsage.Games, 300), (StorageUsage.System, 100), (StorageUsage.Games, 200), (StorageUsage.Trash, 0)]);
-        Assert.Equal([(StorageUsage.Games, 500L), (StorageUsage.Other, 400L), (StorageUsage.System, 100L)], parts.OrderByDescending(p => p.Bytes).ToList());
-        Assert.DoesNotContain(StorageUsage.Summarize(100, [(StorageUsage.System, 150)]), p => p.Category == StorageUsage.Other); // hard links can pass the used space
-        Assert.Equal(StorageUsage.Other, parts[^1].Category); // unclassified goes last, after the sorted categories
+        const long gb = 1024L * 1024 * 1024;
+        var parts = StorageUsage.Summarize(10 * gb, [(StorageUsage.Games, 3 * gb), (StorageUsage.System, gb), (StorageUsage.Games, 2 * gb), (StorageUsage.Trash, 0)]);
+        Assert.Equal([(StorageUsage.Games, 5 * gb), (StorageUsage.System, gb), (StorageUsage.Hidden, 4 * gb)], parts);
+        Assert.DoesNotContain(StorageUsage.Summarize(gb, [(StorageUsage.System, 2 * gb)]), p => p.Category == StorageUsage.Hidden); // hard links can pass the used space
+        Assert.DoesNotContain(StorageUsage.Summarize(gb + 1000, [(StorageUsage.System, gb)]), p => p.Category == StorageUsage.Hidden); // crumbs are not worth a segment
+    }
+
+    [Fact]
+    public void Folder_names_suggest_a_category()
+    {
+        Assert.Equal(StorageUsage.Games, StorageUsage.Classify("JUEGOS"));
+        Assert.Equal(StorageUsage.Dev, StorageUsage.Classify(".gradle"));
+        Assert.Equal(StorageUsage.Dev, StorageUsage.Classify("Dev"));
+        Assert.Equal(StorageUsage.Media, StorageUsage.Classify("Grabaciones"));
+        Assert.Equal(StorageUsage.Games, StorageUsage.Classify("Emulacion"));
+        Assert.Equal(StorageUsage.Dev, StorageUsage.Classify("VulkanSDK"));
+        Assert.Equal(StorageUsage.Dev, StorageUsage.Classify(".claude"));
+        Assert.Null(StorageUsage.Classify("VoiceStudio"));
+    }
+
+    [Fact]
+    public void A_child_holding_most_of_the_root_is_opened_one_level()
+    {
+        var children = new Dictionary<string, long> { ["common"] = 900, ["workshop"] = 80, ["shadercache"] = 20 };
+        var inner = new Dictionary<string, IReadOnlyDictionary<string, long>>
+        {
+            ["common"] = new Dictionary<string, long> { ["Marvel Rivals"] = 600, ["Palworld"] = 290, [""] = 10 },
+        };
+        var items = StorageUsage.TopItems(@"D:\SteamLibrary\steamapps", 1000, children, inner);
+        Assert.Equal(@"D:\SteamLibrary\steamapps\common\Marvel Rivals", items[0].Path);
+        Assert.Equal([600L, 290L, 80L, 20L, 10L], items.Select(i => i.Bytes));
+        Assert.Equal(@"D:\SteamLibrary\steamapps\common", items[^1].Path); // loose files of common
+
+        var spread = StorageUsage.TopItems(@"C:\Windows", 100, new Dictionary<string, long> { ["System32"] = 50, ["WinSxS"] = 50 }, inner, take: 1);
+        Assert.Single(spread);
     }
 }
