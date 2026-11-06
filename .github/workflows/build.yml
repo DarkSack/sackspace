@@ -13,13 +13,13 @@ on:
 
 permissions:
   contents: write # the draft Release on tags
-  actions: read   # SignPath reads the job and downloads the artifact
 
 jobs:
   build:
     runs-on: windows-latest
     env:
       SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && github.event_name != 'pull_request' }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
       SIGNPATH_PROJECT: sackspace
       SIGNPATH_POLICY: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
     steps:
@@ -33,31 +33,20 @@ jobs:
         shell: pwsh
         run: ./publish.ps1 -NoInstaller
 
-      - name: Subir el exe sin firmar
-        id: exe
-        uses: actions/upload-artifact@v4
-        with:
-          name: exe-sin-firmar
-          path: dist/SackSpace.exe
-          if-no-files-found: error
+      # Signing goes straight to the SignPath REST API (PowerShell module), not through the
+      # GitHub connector: the connector needs the predefined GitHub.com trusted build system,
+      # which the free trial does not offer. The artifact configurations expect a zip.
+      - name: Modulo de SignPath
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Install-Module SignPath -Force -Scope CurrentUser
 
       - name: Firmar el exe (SignPath)
         if: env.SIGN == 'true'
-        uses: signpath/github-action-submit-signing-request@v2
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ env.SIGNPATH_PROJECT }}
-          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
-          artifact-configuration-slug: exe
-          github-artifact-id: ${{ steps.exe.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed-exe
-
-      - name: Usar el exe firmado
-        if: env.SIGN == 'true'
         shell: pwsh
-        run: Copy-Item signed-exe/SackSpace.exe dist/SackSpace.exe -Force
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: ./sign.ps1 -File dist/SackSpace.exe -Configuration exe
 
       - name: Inno Setup
         shell: pwsh
@@ -68,32 +57,18 @@ jobs:
         shell: pwsh
         run: ./publish.ps1 -InstallerOnly
 
-      - name: Subir el instalador sin firmar
-        id: setup
-        uses: actions/upload-artifact@v4
-        with:
-          name: instalador-sin-firmar
-          path: dist/SackSpace-Setup-*.exe
-          if-no-files-found: error
-
       - name: Firmar el instalador (SignPath)
         if: env.SIGN == 'true'
-        uses: signpath/github-action-submit-signing-request@v2
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ env.SIGNPATH_PROJECT }}
-          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
-          artifact-configuration-slug: installer
-          github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed-setup
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: ./sign.ps1 -File (Get-ChildItem dist -Filter 'SackSpace-Setup-*.exe' | Select-Object -First 1).FullName -Configuration installer
 
       - name: Subir el instalador final
         uses: actions/upload-artifact@v4
         with:
           name: SackSpace
-          path: ${{ env.SIGN == 'true' && 'signed-setup/SackSpace-Setup-*.exe' || 'dist/SackSpace-Setup-*.exe' }}
+          path: dist/SackSpace-Setup-*.exe
           if-no-files-found: error
 
       - name: Borrador de la Release
@@ -102,6 +77,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $setup = Get-ChildItem $(if ($env:SIGN -eq 'true') { 'signed-setup' } else { 'dist' }) -Filter 'SackSpace-Setup-*.exe' | Select-Object -First 1
+          $setup = Get-ChildItem dist -Filter 'SackSpace-Setup-*.exe' | Select-Object -First 1
           $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash
           gh release create $env:GITHUB_REF_NAME $setup.FullName --draft --title "SackSpace $($env:GITHUB_REF_NAME.TrimStart('v'))" --notes "SHA-256 del instalador: ``$hash``"
